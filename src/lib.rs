@@ -8,7 +8,7 @@
 //! - **Core Types**: Complete representation of DFXML elements including files,
 //!   volumes, disk images, partitions, and metadata.
 //! - **Streaming Reader**: Memory-efficient parsing of large DFXML files.
-//! - **Writer**: Generate valid DFXML output (coming soon).
+//! - **Writer**: Generate valid DFXML output with proper namespace handling.
 //! - **Serde Support**: Optional serialization with the `serde` feature.
 //!
 //! # Quick Start
@@ -51,10 +51,30 @@
 //! }
 //! ```
 //!
+//! # Writing DFXML
+//!
+//! ```rust
+//! use dfxml::objects::{DFXMLObject, VolumeObject, FileObject, HashType};
+//! use dfxml::writer;
+//!
+//! let mut doc = DFXMLObject::new();
+//! doc.program = Some("my-tool".to_string());
+//!
+//! let mut vol = VolumeObject::with_ftype("ntfs");
+//! let mut file = FileObject::with_filename("evidence.doc");
+//! file.filesize = Some(1024);
+//! vol.append_file(file);
+//! doc.append_volume(vol);
+//!
+//! let xml = writer::to_string(&doc).unwrap();
+//! println!("{}", xml);
+//! ```
+//!
 //! # Module Structure
 //!
 //! - [`objects`] - Core DFXML data structures
 //! - [`reader`] - Streaming XML parser
+//! - [`writer`] - XML serialization
 //! - [`error`] - Error types
 //!
 //! # Optional Features
@@ -67,6 +87,7 @@
 pub mod error;
 pub mod objects;
 pub mod reader;
+pub mod writer;
 
 // Re-export commonly used types at the crate root
 pub use error::{Error, Result};
@@ -74,6 +95,7 @@ pub use objects::{
     ByteRun, ByteRuns, DFXMLObject, FileObject, HashType, Hashes, Timestamp, VolumeObject,
 };
 pub use reader::{parse, parse_file_objects, DFXMLReader, Event};
+pub use writer::{to_string, write, DFXMLWriter, WriterConfig};
 
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
