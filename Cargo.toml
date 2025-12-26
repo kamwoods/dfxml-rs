@@ -1,0 +1,23 @@
+[package]
+name = "dfxml-rs"
+version = "0.1.0"
+edition = "2021"
+authors = ["Kam Woods"]
+description = "Digital Forensics XML library for Rust"
+license = "GNU Lesser General Public License 3.0"
+repository = "https://github.com/kamwoods/dfxml-rs"
+keywords = ["forensics", "dfxml", "xml", "digital-forensics"]
+categories = ["parser-implementations", "encoding"]
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+quick-xml = { version = "0.37", features = ["serialize"] }
+thiserror = "2.0"
+serde = { version = "1.0", features = ["derive"], optional = true }
+
+[features]
+default = []
+serde = ["dep:serde", "chrono/serde"]
+
+[dev-dependencies]
+tempfile = "3.15"
