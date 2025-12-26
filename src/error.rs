@@ -20,7 +20,9 @@ pub enum Error {
     /// Invalid hash value
     #[error("Invalid hash value for {hash_type}: {message}")]
     InvalidHash {
+        /// The hash algorithm type that was invalid
         hash_type: String,
+        /// Description of why the hash was invalid
         message: String,
     },
 
