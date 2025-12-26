@@ -39,12 +39,19 @@ pub const XMLNS_DFXML_EXT: &str =
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum HashType {
+    /// MD5 (128-bit)
     Md5,
+    /// SHA-1 (160-bit)
     Sha1,
+    /// SHA-224 (224-bit)
     Sha224,
+    /// SHA-256 (256-bit)
     Sha256,
+    /// SHA-384 (384-bit)
     Sha384,
+    /// SHA-512 (512-bit)
     Sha512,
+    /// MD6 (variable, typically 512-bit)
     Md6,
 }
 
@@ -109,12 +116,19 @@ impl fmt::Display for HashType {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Hashes {
+    /// MD5 hash (32 hex characters)
     pub md5: Option<String>,
+    /// SHA-1 hash (40 hex characters)
     pub sha1: Option<String>,
+    /// SHA-224 hash (56 hex characters)
     pub sha224: Option<String>,
+    /// SHA-256 hash (64 hex characters)
     pub sha256: Option<String>,
+    /// SHA-384 hash (96 hex characters)
     pub sha384: Option<String>,
+    /// SHA-512 hash (128 hex characters)
     pub sha512: Option<String>,
+    /// MD6 hash (variable length)
     pub md6: Option<String>,
 }
 
@@ -197,6 +211,7 @@ pub enum TimeUnit {
 }
 
 impl TimeUnit {
+    /// Returns the string representation of this time unit.
     pub fn as_str(&self) -> &'static str {
         match self {
             TimeUnit::Day => "d",
@@ -234,11 +249,14 @@ impl fmt::Display for TimeUnit {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Precision {
+    /// The numeric resolution value
     pub resolution: i32,
+    /// The time unit (seconds, milliseconds, etc.)
     pub unit: TimeUnit,
 }
 
 impl Precision {
+    /// Creates a new Precision with the given resolution and unit.
     pub fn new(resolution: i32, unit: TimeUnit) -> Self {
         Self { resolution, unit }
     }
@@ -305,6 +323,7 @@ pub enum TimestampName {
 }
 
 impl TimestampName {
+    /// Returns the XML element name for this timestamp type.
     pub fn as_str(&self) -> &'static str {
         match self {
             TimestampName::Mtime => "mtime",
@@ -462,6 +481,7 @@ pub enum ByteRunFacet {
 }
 
 impl ByteRunFacet {
+    /// Returns the XML attribute value for this facet.
     pub fn as_str(&self) -> &'static str {
         match self {
             ByteRunFacet::Data => "data",

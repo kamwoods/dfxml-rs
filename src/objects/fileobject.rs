@@ -46,6 +46,7 @@ pub enum NameType {
 }
 
 impl NameType {
+    /// Creates a NameType from a TSK name type code.
     pub fn from_code(code: i32) -> Self {
         // TSK name type codes
         match code {
@@ -62,6 +63,7 @@ impl NameType {
         }
     }
 
+    /// Returns the single-character string representation.
     pub fn as_str(&self) -> &'static str {
         match self {
             NameType::Regular => "r",
@@ -102,19 +104,30 @@ impl std::str::FromStr for NameType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum MetaType {
+    /// Regular file
     Regular,
+    /// Directory
     Directory,
+    /// Symbolic link
     SymbolicLink,
+    /// Block device
     BlockDevice,
+    /// Character device
     CharacterDevice,
+    /// Named pipe (FIFO)
     Fifo,
+    /// Socket
     Socket,
+    /// Shadow/whiteout entry
     Shadow,
+    /// Virtual file
     Virtual,
+    /// Unknown type
     Unknown,
 }
 
 impl MetaType {
+    /// Creates a MetaType from a TSK meta type code.
     pub fn from_code(code: i32) -> Self {
         match code {
             1 => MetaType::Regular,

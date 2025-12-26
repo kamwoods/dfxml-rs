@@ -298,10 +298,15 @@ impl DFXMLObject {
 /// An enum representing any child object in a DFXML document.
 #[derive(Debug)]
 pub enum DFXMLChild<'a> {
+    /// A disk image object
     DiskImage(&'a DiskImageObject),
+    /// A partition system object
     PartitionSystem(&'a PartitionSystemObject),
+    /// A partition object
     Partition(&'a PartitionObject),
+    /// A volume object
     Volume(&'a VolumeObject),
+    /// A file object
     File(&'a FileObject),
 }
 
@@ -313,6 +318,8 @@ pub struct DFXMLIterator<'a> {
     partitions: std::slice::Iter<'a, PartitionObject>,
     volumes: std::slice::Iter<'a, VolumeObject>,
     files: std::slice::Iter<'a, FileObject>,
+    /// Reserved for future depth-first traversal into volume contents
+    #[allow(dead_code)]
     current_volume_files: Option<Box<dyn Iterator<Item = &'a FileObject> + 'a>>,
 }
 

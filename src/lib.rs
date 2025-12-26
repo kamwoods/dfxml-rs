@@ -7,43 +7,54 @@
 //!
 //! - **Core Types**: Complete representation of DFXML elements including files,
 //!   volumes, disk images, partitions, and metadata.
-//! - **Streaming Reader**: Memory-efficient parsing of large DFXML files (coming soon).
+//! - **Streaming Reader**: Memory-efficient parsing of large DFXML files.
 //! - **Writer**: Generate valid DFXML output (coming soon).
 //! - **Serde Support**: Optional serialization with the `serde` feature.
 //!
 //! # Quick Start
 //!
-//! ```rust
-//! use dfxml::objects::{DFXMLObject, VolumeObject, FileObject, HashType};
+//! ```rust,no_run
+//! use dfxml::reader::{DFXMLReader, Event, parse};
+//! use std::fs::File;
+//! use std::io::BufReader;
 //!
-//! // Create a new DFXML document
-//! let mut doc = DFXMLObject::new();
-//! doc.program = Some("my-forensic-tool".to_string());
-//! doc.program_version = Some("1.0.0".to_string());
-//!
-//! // Create a volume
-//! let mut volume = VolumeObject::with_ftype("ntfs");
-//! volume.block_size = Some(4096);
-//!
-//! // Create a file with metadata
-//! let mut file = FileObject::with_filename("/Users/test/document.pdf");
-//! file.filesize = Some(1024000);
-//! file.hashes.set(HashType::Sha256,
-//!     "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string());
-//!
-//! // Add file to volume, volume to document
-//! volume.append_file(file);
-//! doc.append_volume(volume);
+//! // Parse a complete DFXML file
+//! let file = File::open("forensic_output.xml").unwrap();
+//! let dfxml = parse(BufReader::new(file)).unwrap();
 //!
 //! // Iterate over all files
-//! for file in doc.iter_files() {
-//!     println!("File: {:?}", file.filename);
+//! for file in dfxml.iter_files() {
+//!     println!("File: {:?}, Size: {:?}", file.filename, file.filesize);
+//! }
+//! ```
+//!
+//! # Streaming API
+//!
+//! For large DFXML files, use the streaming reader:
+//!
+//! ```rust,no_run
+//! use dfxml::reader::{DFXMLReader, Event};
+//! use std::fs::File;
+//! use std::io::BufReader;
+//!
+//! let file = File::open("large_forensic_output.xml").unwrap();
+//! let reader = DFXMLReader::from_reader(BufReader::new(file));
+//!
+//! for result in reader {
+//!     match result {
+//!         Ok(Event::FileObject(file)) => {
+//!             println!("File: {:?}", file.filename);
+//!         }
+//!         Ok(_) => {}
+//!         Err(e) => eprintln!("Error: {}", e),
+//!     }
 //! }
 //! ```
 //!
 //! # Module Structure
 //!
 //! - [`objects`] - Core DFXML data structures
+//! - [`reader`] - Streaming XML parser
 //! - [`error`] - Error types
 //!
 //! # Optional Features
@@ -55,12 +66,14 @@
 
 pub mod error;
 pub mod objects;
+pub mod reader;
 
 // Re-export commonly used types at the crate root
 pub use error::{Error, Result};
 pub use objects::{
     ByteRun, ByteRuns, DFXMLObject, FileObject, HashType, Hashes, Timestamp, VolumeObject,
 };
+pub use reader::{parse, parse_file_objects, DFXMLReader, Event};
 
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
