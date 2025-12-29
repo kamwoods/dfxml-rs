@@ -851,17 +851,18 @@ pub fn parse<R: BufRead>(reader: R) -> Result<DFXMLObject> {
                 // Merge metadata from DFXMLEnd (which has all parsed creator info)
                 // into our existing dfxml that has the children attached
                 if let Some(ref mut existing) = dfxml {
-                    existing.program = d.program;
-                    existing.program_version = d.program_version;
-                    existing.command_line = d.command_line;
-                    existing.sources = d.sources;
-                    // Copy creator and build libraries
+                    // Copy creator and build libraries first (before moving d.sources)
                     for lib in d.creator_libraries() {
                         existing.add_creator_library(lib.clone());
                     }
                     for lib in d.build_libraries() {
                         existing.add_build_library(lib.clone());
                     }
+                    // Now move/copy the remaining fields
+                    existing.program = d.program;
+                    existing.program_version = d.program_version;
+                    existing.command_line = d.command_line;
+                    existing.sources = d.sources;
                 }
             }
             Event::DiskImageStart(di) => {
