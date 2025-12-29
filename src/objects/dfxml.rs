@@ -5,7 +5,9 @@
 
 use crate::objects::common::{DFXML_VERSION, XMLNS_DC, XMLNS_DELTA, XMLNS_DFXML, XMLNS_DFXML_EXT};
 use crate::objects::fileobject::FileObject;
-use crate::objects::volume::{DiskImageObject, PartitionObject, PartitionSystemObject, VolumeObject};
+use crate::objects::volume::{
+    DiskImageObject, PartitionObject, PartitionSystemObject, VolumeObject,
+};
 use std::collections::{HashMap, HashSet};
 
 /// Information about a library used to create or build the DFXML.
@@ -154,7 +156,9 @@ impl DFXMLObject {
 
     /// Returns an iterator over namespaces (prefix, uri).
     pub fn namespaces(&self) -> impl Iterator<Item = (&str, &str)> {
-        self.namespaces.iter().map(|(k, v)| (k.as_str(), v.as_str()))
+        self.namespaces
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
     }
 
     // === Library Management ===
@@ -289,9 +293,7 @@ impl DFXMLObject {
                 .chain(di.volumes().flat_map(|v| v.iter_all_files()))
         });
 
-        direct_files
-            .chain(volume_files)
-            .chain(disk_image_files)
+        direct_files.chain(volume_files).chain(disk_image_files)
     }
 }
 

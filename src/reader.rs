@@ -212,7 +212,7 @@ impl<R: BufRead> DFXMLReader<R> {
 
         loop {
             self.buf.clear();
-            
+
             // Read the event and immediately extract what we need as owned data
             let event_data = {
                 let event = self.reader.read_event_into(&mut self.buf)?;
@@ -242,9 +242,7 @@ impl<R: BufRead> DFXMLReader<R> {
                         let text = str::from_utf8(e.as_ref())?.to_string();
                         Some(ParsedEvent::Text { text })
                     }
-                    XmlEvent::Eof => {
-                        Some(ParsedEvent::Eof)
-                    }
+                    XmlEvent::Eof => Some(ParsedEvent::Eof),
                     _ => None,
                 }
             };
@@ -297,7 +295,11 @@ impl<R: BufRead> DFXMLReader<R> {
     }
 
     /// Handles a start element event with owned data.
-    fn handle_start_owned(&mut self, local_name: &str, attrs: Vec<(String, String)>) -> Result<Option<Event>> {
+    fn handle_start_owned(
+        &mut self,
+        local_name: &str,
+        attrs: Vec<(String, String)>,
+    ) -> Result<Option<Event>> {
         self.context.push(local_name.to_string());
         self.context.attrs = attrs;
 
@@ -625,31 +627,29 @@ impl<R: BufRead> DFXMLReader<R> {
                     file.compressed = parse_bool(&text);
                 }
             }
-            "error" => {
-                match self.state {
-                    ParserState::InFileObject => {
-                        if let Some(ref mut file) = self.file {
-                            file.error = Some(text);
-                        }
+            "error" => match self.state {
+                ParserState::InFileObject => {
+                    if let Some(ref mut file) = self.file {
+                        file.error = Some(text);
                     }
-                    ParserState::InVolume => {
-                        if let Some(ref mut vol) = self.volume {
-                            vol.error = Some(text);
-                        }
-                    }
-                    ParserState::InPartitionSystem => {
-                        if let Some(ref mut ps) = self.partition_system {
-                            ps.error = Some(text);
-                        }
-                    }
-                    ParserState::InDiskImage => {
-                        if let Some(ref mut di) = self.disk_image {
-                            di.error = Some(text);
-                        }
-                    }
-                    _ => {}
                 }
-            }
+                ParserState::InVolume => {
+                    if let Some(ref mut vol) = self.volume {
+                        vol.error = Some(text);
+                    }
+                }
+                ParserState::InPartitionSystem => {
+                    if let Some(ref mut ps) = self.partition_system {
+                        ps.error = Some(text);
+                    }
+                }
+                ParserState::InDiskImage => {
+                    if let Some(ref mut di) = self.disk_image {
+                        di.error = Some(text);
+                    }
+                }
+                _ => {}
+            },
             // Volume properties
             "ftype_str" => {
                 if let Some(ref mut vol) = self.volume {
