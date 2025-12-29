@@ -5,7 +5,9 @@
 
 use crate::objects::common::{DFXML_VERSION, XMLNS_DC, XMLNS_DELTA, XMLNS_DFXML, XMLNS_DFXML_EXT};
 use crate::objects::fileobject::FileObject;
-use crate::objects::volume::{DiskImageObject, PartitionObject, PartitionSystemObject, VolumeObject};
+use crate::objects::volume::{
+    DiskImageObject, PartitionObject, PartitionSystemObject, VolumeObject,
+};
 use std::collections::{HashMap, HashSet};
 
 /// Information about a library used to create or build the DFXML.
@@ -147,14 +149,14 @@ impl DFXMLObject {
     /// If the prefix already exists, the existing mapping is preserved.
     pub fn add_namespace(&mut self, prefix: impl Into<String>, uri: impl Into<String>) {
         let prefix = prefix.into();
-        if !self.namespaces.contains_key(&prefix) {
-            self.namespaces.insert(prefix, uri.into());
-        }
+        self.namespaces.entry(prefix).or_insert_with(|| uri.into());
     }
 
     /// Returns an iterator over namespaces (prefix, uri).
     pub fn namespaces(&self) -> impl Iterator<Item = (&str, &str)> {
-        self.namespaces.iter().map(|(k, v)| (k.as_str(), v.as_str()))
+        self.namespaces
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
     }
 
     // === Library Management ===
@@ -289,9 +291,7 @@ impl DFXMLObject {
                 .chain(di.volumes().flat_map(|v| v.iter_all_files()))
         });
 
-        direct_files
-            .chain(volume_files)
-            .chain(disk_image_files)
+        direct_files.chain(volume_files).chain(disk_image_files)
     }
 }
 
@@ -386,7 +386,7 @@ mod tests {
         let mut doc = DFXMLObject::new();
         doc.add_namespace("custom", "http://example.com/custom");
 
-        let ns: HashMap<_, _> = doc.namespaces().map(|(k, v)| (k, v)).collect();
+        let ns: HashMap<_, _> = doc.namespaces().collect();
         assert_eq!(ns.get("custom"), Some(&"http://example.com/custom"));
     }
 

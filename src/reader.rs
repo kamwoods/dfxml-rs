@@ -6,7 +6,7 @@
 //! # Example
 //!
 //! ```rust,no_run
-//! use dfxml::reader::{DFXMLReader, Event};
+//! use dfxml_rs::reader::{DFXMLReader, Event};
 //! use std::fs::File;
 //! use std::io::BufReader;
 //!
@@ -30,8 +30,7 @@
 use crate::error::{Error, Result};
 use crate::objects::{
     ByteRun, ByteRunFacet, ByteRuns, DFXMLObject, DiskImageObject, FileObject, HashType,
-    LibraryObject, PartitionObject, PartitionSystemObject, Timestamp, TimestampName,
-    VolumeObject,
+    LibraryObject, PartitionObject, PartitionSystemObject, Timestamp, TimestampName, VolumeObject,
 };
 use quick_xml::events::BytesStart;
 use quick_xml::events::Event as XmlEvent;
@@ -46,28 +45,28 @@ use std::str;
 /// objects when their closing tag is encountered.
 #[derive(Debug)]
 pub enum Event {
-    /// Start of the DFXML document
-    DFXMLStart(DFXMLObject),
-    /// End of the DFXML document
-    DFXMLEnd,
+    /// Start of the DFXML document (metadata may not be fully populated yet)
+    DFXMLStart(Box<DFXMLObject>),
+    /// End of the DFXML document (contains the completed document with all metadata)
+    DFXMLEnd(Box<DFXMLObject>),
     /// Start of a disk image
-    DiskImageStart(DiskImageObject),
-    /// End of a disk image
-    DiskImageEnd,
+    DiskImageStart(Box<DiskImageObject>),
+    /// End of a disk image (contains the completed disk image)
+    DiskImageEnd(Box<DiskImageObject>),
     /// Start of a partition system
-    PartitionSystemStart(PartitionSystemObject),
-    /// End of a partition system
-    PartitionSystemEnd,
+    PartitionSystemStart(Box<PartitionSystemObject>),
+    /// End of a partition system (contains the completed partition system)
+    PartitionSystemEnd(Box<PartitionSystemObject>),
     /// Start of a partition
-    PartitionStart(PartitionObject),
-    /// End of a partition
-    PartitionEnd,
+    PartitionStart(Box<PartitionObject>),
+    /// End of a partition (contains the completed partition)
+    PartitionEnd(Box<PartitionObject>),
     /// Start of a volume
-    VolumeStart(VolumeObject),
-    /// End of a volume
-    VolumeEnd,
+    VolumeStart(Box<VolumeObject>),
+    /// End of a volume (contains the completed volume)
+    VolumeEnd(Box<VolumeObject>),
     /// A complete file object
-    FileObject(FileObject),
+    FileObject(Box<FileObject>),
 }
 
 /// Parser state tracking what container we're currently inside.
@@ -134,10 +133,20 @@ impl ElementContext {
 
 /// Intermediate parsed event data (owned, to avoid borrow conflicts).
 enum ParsedEvent {
-    Start { name: String, attrs: Vec<(String, String)> },
-    End { name: String },
-    Empty { name: String, attrs: Vec<(String, String)> },
-    Text { text: String },
+    Start {
+        name: String,
+        attrs: Vec<(String, String)>,
+    },
+    End {
+        name: String,
+    },
+    Empty {
+        name: String,
+        attrs: Vec<(String, String)>,
+    },
+    Text {
+        text: String,
+    },
     Eof,
 }
 
@@ -212,7 +221,7 @@ impl<R: BufRead> DFXMLReader<R> {
 
         loop {
             self.buf.clear();
-            
+
             // Read the event and immediately extract what we need as owned data
             let event_data = {
                 let event = self.reader.read_event_into(&mut self.buf)?;
@@ -242,9 +251,7 @@ impl<R: BufRead> DFXMLReader<R> {
                         let text = str::from_utf8(e.as_ref())?.to_string();
                         Some(ParsedEvent::Text { text })
                     }
-                    XmlEvent::Eof => {
-                        Some(ParsedEvent::Eof)
-                    }
+                    XmlEvent::Eof => Some(ParsedEvent::Eof),
                     _ => None,
                 }
             };
@@ -297,7 +304,11 @@ impl<R: BufRead> DFXMLReader<R> {
     }
 
     /// Handles a start element event with owned data.
-    fn handle_start_owned(&mut self, local_name: &str, attrs: Vec<(String, String)>) -> Result<Option<Event>> {
+    fn handle_start_owned(
+        &mut self,
+        local_name: &str,
+        attrs: Vec<(String, String)>,
+    ) -> Result<Option<Event>> {
         self.context.push(local_name.to_string());
         self.context.attrs = attrs;
 
@@ -312,27 +323,35 @@ impl<R: BufRead> DFXMLReader<R> {
                 }
                 self.dfxml = Some(dfxml.clone());
                 self.state = ParserState::InDfxml;
-                return Ok(Some(Event::DFXMLStart(dfxml)));
+                return Ok(Some(Event::DFXMLStart(Box::new(dfxml))));
             }
             "diskimageobject" => {
                 self.state_stack.push(self.state);
                 self.state = ParserState::InDiskImage;
-                self.disk_image = Some(DiskImageObject::new());
+                let di = DiskImageObject::new();
+                self.disk_image = Some(di.clone());
+                return Ok(Some(Event::DiskImageStart(Box::new(di))));
             }
             "partitionsystemobject" => {
                 self.state_stack.push(self.state);
                 self.state = ParserState::InPartitionSystem;
-                self.partition_system = Some(PartitionSystemObject::new());
+                let ps = PartitionSystemObject::new();
+                self.partition_system = Some(ps.clone());
+                return Ok(Some(Event::PartitionSystemStart(Box::new(ps))));
             }
             "partitionobject" => {
                 self.state_stack.push(self.state);
                 self.state = ParserState::InPartition;
-                self.partition = Some(PartitionObject::new());
+                let p = PartitionObject::new();
+                self.partition = Some(p.clone());
+                return Ok(Some(Event::PartitionStart(Box::new(p))));
             }
             "volume" => {
                 self.state_stack.push(self.state);
                 self.state = ParserState::InVolume;
-                self.volume = Some(VolumeObject::new());
+                let vol = VolumeObject::new();
+                self.volume = Some(vol.clone());
+                return Ok(Some(Event::VolumeStart(Box::new(vol))));
             }
             "fileobject" => {
                 self.state_stack.push(self.state);
@@ -403,36 +422,50 @@ impl<R: BufRead> DFXMLReader<R> {
         match local_name {
             "dfxml" => {
                 self.state = ParserState::Done;
-                return Ok(Some(Event::DFXMLEnd));
+                // Return the completed DFXMLObject with all parsed metadata
+                let completed = self.dfxml.take().unwrap_or_default();
+                return Ok(Some(Event::DFXMLEnd(Box::new(completed))));
             }
             "diskimageobject" => {
                 self.state = self.state_stack.pop().unwrap_or(ParserState::InDfxml);
                 if let Some(di) = self.disk_image.take() {
-                    return Ok(Some(Event::DiskImageStart(di)));
+                    return Ok(Some(Event::DiskImageEnd(Box::new(di))));
                 }
             }
             "partitionsystemobject" => {
                 self.state = self.state_stack.pop().unwrap_or(ParserState::InDfxml);
                 if let Some(ps) = self.partition_system.take() {
-                    return Ok(Some(Event::PartitionSystemStart(ps)));
+                    return Ok(Some(Event::PartitionSystemEnd(Box::new(ps))));
                 }
             }
             "partitionobject" => {
                 self.state = self.state_stack.pop().unwrap_or(ParserState::InDfxml);
                 if let Some(p) = self.partition.take() {
-                    return Ok(Some(Event::PartitionStart(p)));
+                    return Ok(Some(Event::PartitionEnd(Box::new(p))));
                 }
             }
             "volume" => {
                 self.state = self.state_stack.pop().unwrap_or(ParserState::InDfxml);
                 if let Some(vol) = self.volume.take() {
-                    return Ok(Some(Event::VolumeStart(vol)));
+                    return Ok(Some(Event::VolumeEnd(Box::new(vol))));
                 }
             }
             "fileobject" => {
                 self.state = self.state_stack.pop().unwrap_or(ParserState::InDfxml);
                 if let Some(file) = self.file.take() {
-                    return Ok(Some(Event::FileObject(file)));
+                    // Attach to parent container if one exists
+                    // The clone is needed because we also emit the event for streaming users
+                    if let Some(ref mut vol) = self.volume {
+                        vol.append_file(file.clone());
+                    } else if let Some(ref mut p) = self.partition {
+                        p.append_file(file.clone());
+                    } else if let Some(ref mut ps) = self.partition_system {
+                        ps.append_file(file.clone());
+                    } else if let Some(ref mut di) = self.disk_image {
+                        di.append_file(file.clone());
+                    }
+                    // Files without a container will be handled by parse()
+                    return Ok(Some(Event::FileObject(Box::new(file))));
                 }
             }
             "creator" => {
@@ -603,31 +636,29 @@ impl<R: BufRead> DFXMLReader<R> {
                     file.compressed = parse_bool(&text);
                 }
             }
-            "error" => {
-                match self.state {
-                    ParserState::InFileObject => {
-                        if let Some(ref mut file) = self.file {
-                            file.error = Some(text);
-                        }
+            "error" => match self.state {
+                ParserState::InFileObject => {
+                    if let Some(ref mut file) = self.file {
+                        file.error = Some(text);
                     }
-                    ParserState::InVolume => {
-                        if let Some(ref mut vol) = self.volume {
-                            vol.error = Some(text);
-                        }
-                    }
-                    ParserState::InPartitionSystem => {
-                        if let Some(ref mut ps) = self.partition_system {
-                            ps.error = Some(text);
-                        }
-                    }
-                    ParserState::InDiskImage => {
-                        if let Some(ref mut di) = self.disk_image {
-                            di.error = Some(text);
-                        }
-                    }
-                    _ => {}
                 }
-            }
+                ParserState::InVolume => {
+                    if let Some(ref mut vol) = self.volume {
+                        vol.error = Some(text);
+                    }
+                }
+                ParserState::InPartitionSystem => {
+                    if let Some(ref mut ps) = self.partition_system {
+                        ps.error = Some(text);
+                    }
+                }
+                ParserState::InDiskImage => {
+                    if let Some(ref mut di) = self.disk_image {
+                        di.error = Some(text);
+                    }
+                }
+                _ => {}
+            },
             // Volume properties
             "ftype_str" => {
                 if let Some(ref mut vol) = self.volume {
@@ -822,7 +853,7 @@ pub fn parse_file_objects<R: BufRead>(reader: R) -> Result<Vec<FileObject>> {
     let mut files = Vec::new();
     for event in DFXMLReader::from_reader(reader) {
         if let Event::FileObject(file) = event? {
-            files.push(file);
+            files.push(*file);
         }
     }
     Ok(files)
@@ -834,76 +865,76 @@ pub fn parse_file_objects<R: BufRead>(reader: R) -> Result<Vec<FileObject>> {
 /// This loads the entire document into memory.
 pub fn parse<R: BufRead>(reader: R) -> Result<DFXMLObject> {
     let mut dfxml: Option<DFXMLObject> = None;
-    let mut volume_stack: Vec<VolumeObject> = Vec::new();
-    let mut partition_stack: Vec<PartitionObject> = Vec::new();
-    let mut partition_system_stack: Vec<PartitionSystemObject> = Vec::new();
-    let mut disk_image_stack: Vec<DiskImageObject> = Vec::new();
+    // Track nesting depth to know if files should be attached to dfxml directly
+    let mut container_depth = 0;
 
     for event in DFXMLReader::from_reader(reader) {
         match event? {
             Event::DFXMLStart(d) => {
-                dfxml = Some(d);
+                // Use DFXMLStart to initialize the object so children can be attached
+                dfxml = Some(*d);
             }
-            Event::DFXMLEnd => {}
-            Event::DiskImageStart(di) => {
-                disk_image_stack.push(di);
-            }
-            Event::DiskImageEnd => {
-                if let Some(di) = disk_image_stack.pop() {
-                    if let Some(ref mut d) = dfxml {
-                        d.append_disk_image(di);
+            Event::DFXMLEnd(d) => {
+                // Merge metadata from DFXMLEnd (which has all parsed creator info)
+                // into our existing dfxml that has the children attached
+                if let Some(ref mut existing) = dfxml {
+                    // Copy creator and build libraries first (before moving d.sources)
+                    for lib in d.creator_libraries() {
+                        existing.add_creator_library(lib.clone());
                     }
+                    for lib in d.build_libraries() {
+                        existing.add_build_library(lib.clone());
+                    }
+                    // Now move/copy the remaining fields
+                    existing.program = d.program.clone();
+                    existing.program_version = d.program_version.clone();
+                    existing.command_line = d.command_line.clone();
+                    existing.sources = d.sources.clone();
                 }
             }
-            Event::PartitionSystemStart(ps) => {
-                partition_system_stack.push(ps);
+            Event::DiskImageStart(_) => {
+                container_depth += 1;
             }
-            Event::PartitionSystemEnd => {
-                if let Some(ps) = partition_system_stack.pop() {
-                    if let Some(di) = disk_image_stack.last_mut() {
-                        di.append_partition_system(ps);
-                    } else if let Some(ref mut d) = dfxml {
-                        d.append_partition_system(ps);
-                    }
+            Event::DiskImageEnd(di) => {
+                container_depth -= 1;
+                if let Some(ref mut d) = dfxml {
+                    d.append_disk_image(*di);
                 }
             }
-            Event::PartitionStart(p) => {
-                partition_stack.push(p);
+            Event::PartitionSystemStart(_) => {
+                container_depth += 1;
             }
-            Event::PartitionEnd => {
-                if let Some(p) = partition_stack.pop() {
-                    if let Some(ps) = partition_system_stack.last_mut() {
-                        ps.append_partition(p);
-                    } else if let Some(ref mut d) = dfxml {
-                        d.append_partition(p);
-                    }
+            Event::PartitionSystemEnd(ps) => {
+                container_depth -= 1;
+                if let Some(ref mut d) = dfxml {
+                    d.append_partition_system(*ps);
                 }
             }
-            Event::VolumeStart(v) => {
-                volume_stack.push(v);
+            Event::PartitionStart(_) => {
+                container_depth += 1;
             }
-            Event::VolumeEnd => {
-                if let Some(v) = volume_stack.pop() {
-                    if let Some(p) = partition_stack.last_mut() {
-                        p.append_volume(v);
-                    } else if let Some(di) = disk_image_stack.last_mut() {
-                        di.append_volume(v);
-                    } else if let Some(ref mut d) = dfxml {
-                        d.append_volume(v);
-                    }
+            Event::PartitionEnd(p) => {
+                container_depth -= 1;
+                if let Some(ref mut d) = dfxml {
+                    d.append_partition(*p);
+                }
+            }
+            Event::VolumeStart(_) => {
+                container_depth += 1;
+            }
+            Event::VolumeEnd(v) => {
+                container_depth -= 1;
+                if let Some(ref mut d) = dfxml {
+                    d.append_volume(*v);
                 }
             }
             Event::FileObject(f) => {
-                if let Some(v) = volume_stack.last_mut() {
-                    v.append_file(f);
-                } else if let Some(p) = partition_stack.last_mut() {
-                    p.append_file(f);
-                } else if let Some(ps) = partition_system_stack.last_mut() {
-                    ps.append_file(f);
-                } else if let Some(di) = disk_image_stack.last_mut() {
-                    di.append_file(f);
-                } else if let Some(ref mut d) = dfxml {
-                    d.append_file(f);
+                // Files inside containers are already attached by the reader
+                // Only attach files that are directly under dfxml (no parent container)
+                if container_depth == 0 {
+                    if let Some(ref mut d) = dfxml {
+                        d.append_file(*f);
+                    }
                 }
             }
         }
@@ -975,11 +1006,12 @@ mod tests {
 
         let events: Vec<_> = reader.collect::<Result<Vec<_>>>().unwrap();
 
-        // Should have: DFXMLStart, VolumeStart, FileObject, VolumeEnd(?), DFXMLEnd
+        // Should have: DFXMLStart, VolumeStart, FileObject, VolumeEnd, DFXMLEnd
         assert!(events.iter().any(|e| matches!(e, Event::DFXMLStart(_))));
         assert!(events.iter().any(|e| matches!(e, Event::VolumeStart(_))));
         assert!(events.iter().any(|e| matches!(e, Event::FileObject(_))));
-        assert!(events.iter().any(|e| matches!(e, Event::DFXMLEnd)));
+        assert!(events.iter().any(|e| matches!(e, Event::VolumeEnd(_))));
+        assert!(events.iter().any(|e| matches!(e, Event::DFXMLEnd(_))));
     }
 
     #[test]

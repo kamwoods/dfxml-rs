@@ -269,7 +269,9 @@ impl FromStr for Precision {
         // Parse strings like "100ns", "1s", "1d"
         let s = s.trim();
         if s.is_empty() {
-            return Err(Error::InvalidPrecision("Empty precision string".to_string()));
+            return Err(Error::InvalidPrecision(
+                "Empty precision string".to_string(),
+            ));
         }
 
         // Find where digits end
@@ -442,9 +444,8 @@ impl Timestamp {
 
     /// Returns the Unix timestamp with fractional seconds.
     pub fn timestamp_subsec(&self) -> Option<f64> {
-        self.time.map(|t| {
-            t.timestamp() as f64 + (t.timestamp_subsec_nanos() as f64 / 1_000_000_000.0)
-        })
+        self.time
+            .map(|t| t.timestamp() as f64 + (t.timestamp_subsec_nanos() as f64 / 1_000_000_000.0))
     }
 }
 
@@ -794,7 +795,10 @@ mod tests {
         let mut hashes = Hashes::new();
         assert!(!hashes.has_any());
 
-        hashes.set(HashType::Md5, "d41d8cd98f00b204e9800998ecf8427e".to_string());
+        hashes.set(
+            HashType::Md5,
+            "d41d8cd98f00b204e9800998ecf8427e".to_string(),
+        );
         assert!(hashes.has_any());
         assert_eq!(
             hashes.get(HashType::Md5),
@@ -820,10 +824,12 @@ mod tests {
     #[test]
     fn test_timestamp_parse() {
         let ts = Timestamp::parse_iso8601("2024-01-15T10:30:00Z").unwrap();
-        assert_eq!(ts.timestamp(), 1705315800);
+        assert_eq!(ts.timestamp(), 1705314600);
 
         let ts = Timestamp::parse_iso8601("2024-01-15T10:30:00.123456Z").unwrap();
-        assert!(ts.timestamp_subsec().unwrap() > 1705315800.123);
+        assert_eq!(ts.timestamp(), 1705314600);
+        // Verify subsecond precision was parsed (123456 microseconds = 123456000 nanoseconds)
+        assert_eq!(ts.timestamp_subsec_nanos(), 123456000);
     }
 
     #[test]
@@ -849,7 +855,7 @@ mod tests {
         let mut runs = ByteRuns::new();
         runs.glom(ByteRun::with_img_offset(0, 100));
         runs.glom(ByteRun::with_img_offset(100, 50));
-        runs.glom(ByteRun::with_img_offset(200, 25));
+        runs.glom(ByteRun::with_img_offset(150, 25)); // Must be contiguous: 0+100=100, 100+50=150
 
         // Should have merged into one run
         assert_eq!(runs.len(), 1);

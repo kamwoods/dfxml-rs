@@ -374,7 +374,6 @@ impl FileObject {
 mod tests {
     use super::*;
     use crate::objects::common::{ByteRun, HashType};
-    use chrono::{TimeZone, Utc};
 
     #[test]
     fn test_file_object_new() {
@@ -405,8 +404,10 @@ mod tests {
     #[test]
     fn test_file_object_hashes() {
         let mut fo = FileObject::new();
-        fo.hashes
-            .set(HashType::Md5, "d41d8cd98f00b204e9800998ecf8427e".to_string());
+        fo.hashes.set(
+            HashType::Md5,
+            "d41d8cd98f00b204e9800998ecf8427e".to_string(),
+        );
         fo.hashes.set(
             HashType::Sha256,
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string(),

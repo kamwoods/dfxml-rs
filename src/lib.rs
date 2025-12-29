@@ -14,7 +14,7 @@
 //! # Quick Start
 //!
 //! ```rust,no_run
-//! use dfxml::reader::{DFXMLReader, Event, parse};
+//! use dfxml_rs::reader::{DFXMLReader, Event, parse};
 //! use std::fs::File;
 //! use std::io::BufReader;
 //!
@@ -33,7 +33,7 @@
 //! For large DFXML files, use the streaming reader:
 //!
 //! ```rust,no_run
-//! use dfxml::reader::{DFXMLReader, Event};
+//! use dfxml_rs::reader::{DFXMLReader, Event};
 //! use std::fs::File;
 //! use std::io::BufReader;
 //!
@@ -54,8 +54,8 @@
 //! # Writing DFXML
 //!
 //! ```rust
-//! use dfxml::objects::{DFXMLObject, VolumeObject, FileObject, HashType};
-//! use dfxml::writer;
+//! use dfxml_rs::objects::{DFXMLObject, VolumeObject, FileObject, HashType};
+//! use dfxml_rs::writer;
 //!
 //! let mut doc = DFXMLObject::new();
 //! doc.program = Some("my-tool".to_string());

@@ -6,8 +6,8 @@
 //! # Example
 //!
 //! ```rust
-//! use dfxml::objects::{DFXMLObject, VolumeObject, FileObject, HashType};
-//! use dfxml::writer::DFXMLWriter;
+//! use dfxml_rs::objects::{DFXMLObject, VolumeObject, FileObject, HashType};
+//! use dfxml_rs::writer::DFXMLWriter;
 //!
 //! let mut doc = DFXMLObject::new();
 //! doc.program = Some("my-tool".to_string());
@@ -28,8 +28,8 @@
 use crate::error::Result;
 use crate::objects::{
     ByteRun, ByteRunFacet, ByteRuns, DFXMLObject, DiskImageObject, FileObject, HashType,
-    LibraryObject, PartitionObject, PartitionSystemObject, Timestamp, VolumeObject,
-    XMLNS_DC, XMLNS_DFXML,
+    LibraryObject, PartitionObject, PartitionSystemObject, Timestamp, VolumeObject, XMLNS_DC,
+    XMLNS_DFXML,
 };
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Writer;
@@ -326,11 +326,7 @@ impl DFXMLWriter {
     }
 
     /// Writes a partition object.
-    fn write_partition<W: Write>(
-        &self,
-        writer: &mut Writer<W>,
-        p: &PartitionObject,
-    ) -> Result<()> {
+    fn write_partition<W: Write>(&self, writer: &mut Writer<W>, p: &PartitionObject) -> Result<()> {
         writer.write_event(Event::Start(BytesStart::new("partitionobject")))?;
 
         if let Some(idx) = p.partition_index {
@@ -771,8 +767,10 @@ mod tests {
 
         let mut file = FileObject::with_filename("test.txt");
         file.filesize = Some(1024);
-        file.hashes
-            .set(HashType::Md5, "d41d8cd98f00b204e9800998ecf8427e".to_string());
+        file.hashes.set(
+            HashType::Md5,
+            "d41d8cd98f00b204e9800998ecf8427e".to_string(),
+        );
 
         let mut brs = ByteRuns::new();
         brs.push(ByteRun::with_img_offset(0, 512));
@@ -846,8 +844,7 @@ mod tests {
         let mut file = FileObject::with_filename("/home/user/test.txt");
         file.filesize = Some(2048);
         file.inode = Some(12345);
-        file.hashes
-            .set(HashType::Sha256, "abcd1234".to_string());
+        file.hashes.set(HashType::Sha256, "abcd1234".to_string());
 
         vol.append_file(file);
         doc.append_volume(vol);
