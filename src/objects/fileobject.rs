@@ -374,7 +374,6 @@ impl FileObject {
 mod tests {
     use super::*;
     use crate::objects::common::{ByteRun, HashType};
-    use chrono::{TimeZone, Utc};
 
     #[test]
     fn test_file_object_new() {

@@ -823,7 +823,9 @@ mod tests {
         assert_eq!(ts.timestamp(), 1705315800);
 
         let ts = Timestamp::parse_iso8601("2024-01-15T10:30:00.123456Z").unwrap();
-        assert!(ts.timestamp_subsec().unwrap() > 1705315800.123);
+        assert_eq!(ts.timestamp(), 1705315800);
+        // Verify subsecond precision was parsed (123456 microseconds = 123456000 nanoseconds)
+        assert_eq!(ts.timestamp_subsec_nanos(), 123456000);
     }
 
     #[test]
