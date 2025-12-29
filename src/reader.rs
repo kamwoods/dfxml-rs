@@ -843,11 +843,26 @@ pub fn parse<R: BufRead>(reader: R) -> Result<DFXMLObject> {
 
     for event in DFXMLReader::from_reader(reader) {
         match event? {
-            Event::DFXMLStart(_) => {
-                // Ignore the start event; we'll use DFXMLEnd which has all metadata
+            Event::DFXMLStart(d) => {
+                // Use DFXMLStart to initialize the object so children can be attached
+                dfxml = Some(d);
             }
             Event::DFXMLEnd(d) => {
-                dfxml = Some(d);
+                // Merge metadata from DFXMLEnd (which has all parsed creator info)
+                // into our existing dfxml that has the children attached
+                if let Some(ref mut existing) = dfxml {
+                    existing.program = d.program;
+                    existing.program_version = d.program_version;
+                    existing.command_line = d.command_line;
+                    existing.sources = d.sources;
+                    // Copy creator and build libraries
+                    for lib in d.creator_libraries() {
+                        existing.append_creator_library(lib.clone());
+                    }
+                    for lib in d.build_libraries() {
+                        existing.append_build_library(lib.clone());
+                    }
+                }
             }
             Event::DiskImageStart(di) => {
                 disk_image_stack.push(di);
