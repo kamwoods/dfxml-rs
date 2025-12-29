@@ -928,7 +928,6 @@ pub fn parse<R: BufRead>(reader: R) -> Result<DFXMLObject> {
                     }
                 }
             }
-            }
         }
     }
 
