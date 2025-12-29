@@ -857,10 +857,10 @@ pub fn parse<R: BufRead>(reader: R) -> Result<DFXMLObject> {
                     existing.sources = d.sources;
                     // Copy creator and build libraries
                     for lib in d.creator_libraries() {
-                        existing.append_creator_library(lib.clone());
+                        existing.add_creator_library(lib.clone());
                     }
                     for lib in d.build_libraries() {
-                        existing.append_build_library(lib.clone());
+                        existing.add_build_library(lib.clone());
                     }
                 }
             }
