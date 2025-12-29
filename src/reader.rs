@@ -6,7 +6,7 @@
 //! # Example
 //!
 //! ```rust,no_run
-//! use dfxml::reader::{DFXMLReader, Event};
+//! use dfxml_rs::reader::{DFXMLReader, Event};
 //! use std::fs::File;
 //! use std::io::BufReader;
 //!

@@ -6,8 +6,8 @@
 //! # Example
 //!
 //! ```rust
-//! use dfxml::objects::{DFXMLObject, VolumeObject, FileObject, HashType};
-//! use dfxml::writer::DFXMLWriter;
+//! use dfxml_rs::objects::{DFXMLObject, VolumeObject, FileObject, HashType};
+//! use dfxml_rs::writer::DFXMLWriter;
 //!
 //! let mut doc = DFXMLObject::new();
 //! doc.program = Some("my-tool".to_string());
