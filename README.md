@@ -26,10 +26,10 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-dfxml = { path = "path/to/dfxml-rs" }
+dfxml-rs = { path = "path/to/dfxml-rs" }
 
 # Optional: enable serde support
-# dfxml = { path = "path/to/dfxml-rs", features = ["serde"] }
+# dfxml-rs = { path = "path/to/dfxml-rs", features = ["serde"] }
 ```
 
 ## Quick Start
@@ -37,11 +37,11 @@ dfxml = { path = "path/to/dfxml-rs" }
 ### Parsing a DFXML File
 
 ```rust
-use dfxml::{parse, DFXMLObject};
+use dfxml_rs::{parse, DFXMLObject};
 use std::fs::File;
 use std::io::BufReader;
 
-fn main() -> dfxml::Result<()> {
+fn main() -> dfxml_rs::Result<()> {
     let file = File::open("forensic_output.xml")?;
     let dfxml = parse(BufReader::new(file))?;
 
@@ -63,11 +63,11 @@ fn main() -> dfxml::Result<()> {
 For very large DFXML files, use the streaming API to avoid loading everything into memory:
 
 ```rust
-use dfxml::{DFXMLReader, Event};
+use dfxml_rs::{DFXMLReader, Event};
 use std::fs::File;
 use std::io::BufReader;
 
-fn main() -> dfxml::Result<()> {
+fn main() -> dfxml_rs::Result<()> {
     let file = File::open("large_forensic_output.xml")?;
     let reader = DFXMLReader::from_reader(BufReader::new(file));
 
@@ -95,9 +95,9 @@ fn main() -> dfxml::Result<()> {
 ### Creating DFXML Output
 
 ```rust
-use dfxml::{DFXMLObject, VolumeObject, FileObject, HashType, to_string};
+use dfxml_rs::{DFXMLObject, VolumeObject, FileObject, HashType, to_string};
 
-fn main() -> dfxml::Result<()> {
+fn main() -> dfxml_rs::Result<()> {
     let mut doc = DFXMLObject::new();
     doc.program = Some("my-forensic-tool".to_string());
     doc.program_version = Some("1.0.0".to_string());
@@ -107,8 +107,10 @@ fn main() -> dfxml::Result<()> {
 
     let mut file = FileObject::with_filename("/Users/evidence/document.pdf");
     file.filesize = Some(1048576);
-    file.hashes.set(HashType::Sha256, 
-        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string());
+    file.hashes.set(
+        HashType::Sha256,
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string(),
+    );
 
     volume.append_file(file);
     doc.append_volume(volume);
@@ -160,17 +162,17 @@ The `DFXMLReader` iterator yields `Event` variants:
 
 | Event | Description |
 |-------|-------------|
-| `DFXMLStart(DFXMLObject)` | Document opened with metadata |
-| `DFXMLEnd` | Document closed |
-| `DiskImageStart(DiskImageObject)` | Disk image opened |
-| `DiskImageEnd` | Disk image closed |
-| `PartitionSystemStart(PartitionSystemObject)` | Partition system opened |
-| `PartitionSystemEnd` | Partition system closed |
-| `PartitionStart(PartitionObject)` | Partition opened |
-| `PartitionEnd` | Partition closed |
-| `VolumeStart(VolumeObject)` | Volume opened |
-| `VolumeEnd` | Volume closed |
-| `FileObject(FileObject)` | Complete file object |
+| `DFXMLStart(Box<DFXMLObject>)` | Document opened with metadata |
+| `DFXMLEnd(Box<DFXMLObject>)` | Document closed (contains completed metadata) |
+| `DiskImageStart(Box<DiskImageObject>)` | Disk image opened |
+| `DiskImageEnd(Box<DiskImageObject>)` | Disk image closed (contains completed object) |
+| `PartitionSystemStart(Box<PartitionSystemObject>)` | Partition system opened |
+| `PartitionSystemEnd(Box<PartitionSystemObject>)` | Partition system closed (contains completed object) |
+| `PartitionStart(Box<PartitionObject>)` | Partition opened |
+| `PartitionEnd(Box<PartitionObject>)` | Partition closed (contains completed object) |
+| `VolumeStart(Box<VolumeObject>)` | Volume opened |
+| `VolumeEnd(Box<VolumeObject>)` | Volume closed (contains completed object with files) |
+| `FileObject(Box<FileObject>)` | Complete file object |
 
 ### Supported Elements
 
@@ -199,7 +201,7 @@ The reader parses all standard DFXML elements:
 ### Configuration
 
 ```rust
-use dfxml::writer::{DFXMLWriter, WriterConfig};
+use dfxml_rs::writer::{DFXMLWriter, WriterConfig};
 
 // Default: indented with 2 spaces
 let writer = DFXMLWriter::new();
