@@ -1,5 +1,9 @@
 # dfxml-rs
 
+[![GitHub issues](https://img.shields.io/github/issues/kamwoods/dfxml-rs.svg)](https://github.com/kamwoods/dfxml-rs/issues)
+[![Build](https://github.com/kamwoods/dfxml-rs/actions/workflows/build.yml/badge.svg)](https://github.com/kamwoods/dfxml-rs/actions/workflows/build.yml)
+[![GitHub forks](https://img.shields.io/github/forks/kamwoods/dfxml-rs.svg)](https://github.com/kamwoods/dfxml-rs/network)
+
 ## Digital Forensics XML (DFXML) Library for Rust
 
 A Rust library for reading, writing, and manipulating Digital Forensics XML (DFXML) files. DFXML is a standardized format for representing digital forensic metadata, commonly used in disk imaging, file system analysis, and digital evidence processing.
