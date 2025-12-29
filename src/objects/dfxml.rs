@@ -149,9 +149,7 @@ impl DFXMLObject {
     /// If the prefix already exists, the existing mapping is preserved.
     pub fn add_namespace(&mut self, prefix: impl Into<String>, uri: impl Into<String>) {
         let prefix = prefix.into();
-        if !self.namespaces.contains_key(&prefix) {
-            self.namespaces.insert(prefix, uri.into());
-        }
+        self.namespaces.entry(prefix).or_insert_with(|| uri.into());
     }
 
     /// Returns an iterator over namespaces (prefix, uri).
@@ -388,7 +386,7 @@ mod tests {
         let mut doc = DFXMLObject::new();
         doc.add_namespace("custom", "http://example.com/custom");
 
-        let ns: HashMap<_, _> = doc.namespaces().map(|(k, v)| (k, v)).collect();
+        let ns: HashMap<_, _> = doc.namespaces().collect();
         assert_eq!(ns.get("custom"), Some(&"http://example.com/custom"));
     }
 
