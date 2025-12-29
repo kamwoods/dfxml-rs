@@ -46,10 +46,10 @@ use std::str;
 /// objects when their closing tag is encountered.
 #[derive(Debug)]
 pub enum Event {
-    /// Start of the DFXML document
+    /// Start of the DFXML document (metadata may not be fully populated yet)
     DFXMLStart(DFXMLObject),
-    /// End of the DFXML document
-    DFXMLEnd,
+    /// End of the DFXML document (contains the completed document with all metadata)
+    DFXMLEnd(DFXMLObject),
     /// Start of a disk image
     DiskImageStart(DiskImageObject),
     /// End of a disk image
@@ -403,7 +403,9 @@ impl<R: BufRead> DFXMLReader<R> {
         match local_name {
             "dfxml" => {
                 self.state = ParserState::Done;
-                return Ok(Some(Event::DFXMLEnd));
+                // Return the completed DFXMLObject with all parsed metadata
+                let completed = self.dfxml.take().unwrap_or_else(DFXMLObject::new);
+                return Ok(Some(Event::DFXMLEnd(completed)));
             }
             "diskimageobject" => {
                 self.state = self.state_stack.pop().unwrap_or(ParserState::InDfxml);
@@ -841,10 +843,12 @@ pub fn parse<R: BufRead>(reader: R) -> Result<DFXMLObject> {
 
     for event in DFXMLReader::from_reader(reader) {
         match event? {
-            Event::DFXMLStart(d) => {
+            Event::DFXMLStart(_) => {
+                // Ignore the start event; we'll use DFXMLEnd which has all metadata
+            }
+            Event::DFXMLEnd(d) => {
                 dfxml = Some(d);
             }
-            Event::DFXMLEnd => {}
             Event::DiskImageStart(di) => {
                 disk_image_stack.push(di);
             }
@@ -979,7 +983,7 @@ mod tests {
         assert!(events.iter().any(|e| matches!(e, Event::DFXMLStart(_))));
         assert!(events.iter().any(|e| matches!(e, Event::VolumeStart(_))));
         assert!(events.iter().any(|e| matches!(e, Event::FileObject(_))));
-        assert!(events.iter().any(|e| matches!(e, Event::DFXMLEnd)));
+        assert!(events.iter().any(|e| matches!(e, Event::DFXMLEnd(_))));
     }
 
     #[test]

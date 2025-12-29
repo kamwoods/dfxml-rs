@@ -820,10 +820,10 @@ mod tests {
     #[test]
     fn test_timestamp_parse() {
         let ts = Timestamp::parse_iso8601("2024-01-15T10:30:00Z").unwrap();
-        assert_eq!(ts.timestamp(), 1705315800);
+        assert_eq!(ts.timestamp(), 1705314600);
 
         let ts = Timestamp::parse_iso8601("2024-01-15T10:30:00.123456Z").unwrap();
-        assert_eq!(ts.timestamp(), 1705315800);
+        assert_eq!(ts.timestamp(), 1705314600);
         // Verify subsecond precision was parsed (123456 microseconds = 123456000 nanoseconds)
         assert_eq!(ts.timestamp_subsec_nanos(), 123456000);
     }
@@ -851,7 +851,7 @@ mod tests {
         let mut runs = ByteRuns::new();
         runs.glom(ByteRun::with_img_offset(0, 100));
         runs.glom(ByteRun::with_img_offset(100, 50));
-        runs.glom(ByteRun::with_img_offset(200, 25));
+        runs.glom(ByteRun::with_img_offset(150, 25));  // Must be contiguous: 0+100=100, 100+50=150
 
         // Should have merged into one run
         assert_eq!(runs.len(), 1);
