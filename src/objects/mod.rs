@@ -22,8 +22,8 @@ mod volume;
 
 // Re-export common types
 pub use common::{
-    ByteRun, ByteRunFacet, ByteRunType, ByteRuns, HashType, Hashes, Precision, TimeUnit,
-    Timestamp, TimestampName, DFXML_VERSION, XMLNS_DC, XMLNS_DELTA, XMLNS_DFXML, XMLNS_DFXML_EXT,
+    ByteRun, ByteRunFacet, ByteRunType, ByteRuns, HashType, Hashes, Precision, TimeUnit, Timestamp,
+    TimestampName, DFXML_VERSION, XMLNS_DC, XMLNS_DELTA, XMLNS_DFXML, XMLNS_DFXML_EXT,
 };
 
 // Re-export main object types

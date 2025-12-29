@@ -30,8 +30,7 @@
 use crate::error::{Error, Result};
 use crate::objects::{
     ByteRun, ByteRunFacet, ByteRuns, DFXMLObject, DiskImageObject, FileObject, HashType,
-    LibraryObject, PartitionObject, PartitionSystemObject, Timestamp, TimestampName,
-    VolumeObject,
+    LibraryObject, PartitionObject, PartitionSystemObject, Timestamp, TimestampName, VolumeObject,
 };
 use quick_xml::events::BytesStart;
 use quick_xml::events::Event as XmlEvent;
@@ -134,10 +133,20 @@ impl ElementContext {
 
 /// Intermediate parsed event data (owned, to avoid borrow conflicts).
 enum ParsedEvent {
-    Start { name: String, attrs: Vec<(String, String)> },
-    End { name: String },
-    Empty { name: String, attrs: Vec<(String, String)> },
-    Text { text: String },
+    Start {
+        name: String,
+        attrs: Vec<(String, String)>,
+    },
+    End {
+        name: String,
+    },
+    Empty {
+        name: String,
+        attrs: Vec<(String, String)>,
+    },
+    Text {
+        text: String,
+    },
     Eof,
 }
 
