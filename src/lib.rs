@@ -10,6 +10,7 @@
 //! - **Streaming Reader**: Memory-efficient parsing of large DFXML files.
 //! - **Writer**: Generate valid DFXML output with proper namespace handling.
 //! - **Serde Support**: Optional serialization with the `serde` feature.
+//! - **XSD Validation**: Optional schema validation with the `validation` feature.
 //!
 //! # Quick Start
 //!
@@ -53,7 +54,7 @@
 //!
 //! # Writing DFXML
 //!
-//! ```rust
+//! ```rust,ignore
 //! use dfxml_rs::objects::{DFXMLObject, VolumeObject, FileObject, HashType};
 //! use dfxml_rs::writer;
 //!
@@ -70,16 +71,35 @@
 //! println!("{}", xml);
 //! ```
 //!
+//! # XSD Validation (optional)
+//!
+//! With the `validation` feature enabled, you can validate DFXML documents
+//! against the official DFXML XML Schema:
+//!
+//! ```rust,ignore
+//! use dfxml_rs::validation::{validate_file, validate_document};
+//!
+//! // Validate a file
+//! validate_file("forensic_output.xml", None)?;
+//!
+//! // Validate a document object
+//! let doc = DFXMLObject::new();
+//! validate_document(&doc, None)?;
+//! ```
+//!
 //! # Module Structure
 //!
 //! - [`objects`] - Core DFXML data structures
 //! - [`reader`] - Streaming XML parser
 //! - [`writer`] - XML serialization
 //! - [`error`] - Error types
+//! - [`validation`] - XSD validation (requires `validation` feature)
 //!
 //! # Optional Features
 //!
 //! - `serde` - Enable serde serialization/deserialization support
+//! - `validation` - Enable XSD schema validation (requires libxml2)
+//! - `cli` - Build command-line tools
 
 #![warn(missing_docs)]
 #![warn(rust_2018_idioms)]
@@ -88,6 +108,9 @@ pub mod error;
 pub mod objects;
 pub mod reader;
 pub mod writer;
+
+#[cfg(feature = "validation")]
+pub mod validation;
 
 // Re-export commonly used types at the crate root
 pub use error::{Error, Result};

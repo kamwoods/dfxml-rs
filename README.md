@@ -18,6 +18,7 @@ This is an early WIP prototype. Exercise caution when using.
 - **Streaming Reader**: Memory-efficient parsing using `quick-xml` — process millions of file entries without loading everything into memory
 - **XML Writer**: Generate valid DFXML output with proper namespace handling
 - **Round-trip Support**: Parse DFXML, modify objects, and write back to XML
+- **XSD Validation**: Validate DFXML documents against the official schema (optional `validation` feature)
 - **CLI Tools**: Command-line utilities for working with DFXML (optional `cli` feature)
 - **Optional Serde Support**: Enable the `serde` feature for serialization/deserialization
 
@@ -51,6 +52,26 @@ cargo build --release --features cli
 
 This builds the following tools:
 - `walk_to_dfxml` - Walk a directory tree and generate DFXML output
+
+### With XSD Validation
+
+To enable XSD schema validation, enable the `validation` feature:
+
+```bash
+cargo build --release --features validation
+```
+
+**Note:** The `validation` feature requires libxml2 to be installed on your system:
+
+- **Ubuntu/Debian:** `sudo apt-get install libxml2-dev`
+- **macOS:** `brew install libxml2`
+- **Windows:** See libxml2 documentation for installation instructions
+
+You must also initialize the dfxml_schema submodule:
+
+```bash
+git submodule update --init --recursive
+```
 
 ## Quick Start
 
@@ -324,6 +345,48 @@ let xml = writer.write_to_string(&doc)?;
 - Byte run facets included when multiple facet types present
 - Self-closing tags for empty elements
 
+## Validation Module
+
+The `validation` module provides XSD schema validation for DFXML documents. This feature requires the `validation` feature flag and libxml2 to be installed.
+
+### Functions
+
+| Function | Description |
+|----------|-------------|
+| `validate_file(path, schema)` | Validate a DFXML file against the schema |
+| `validate_str(xml, schema)` | Validate a DFXML string against the schema |
+| `validate_document(doc, schema)` | Validate a `DFXMLObject` against the schema |
+
+### Usage
+
+```rust
+use dfxml_rs::validation::{validate_file, validate_str, validate_document};
+use dfxml_rs::objects::DFXMLObject;
+
+// Validate a file (uses default schema path)
+validate_file("forensic_output.xml", None)?;
+
+// Validate with a custom schema path
+validate_file("forensic_output.xml", Some("/path/to/dfxml.xsd"))?;
+
+// Validate an XML string
+let xml = r#"<?xml version="1.0"?>
+<dfxml version="1.0">
+  <fileobject>
+    <filename>test.txt</filename>
+  </fileobject>
+</dfxml>"#;
+validate_str(xml, None)?;
+
+// Validate a document object
+let doc = DFXMLObject::new();
+validate_document(&doc, None)?;
+```
+
+### Default Schema Location
+
+By default, the validation functions look for the schema at `external/dfxml_schema/dfxml.xsd` (the submodule location). You can override this by passing a custom path.
+
 ## Project Structure
 
 ```
@@ -340,7 +403,8 @@ dfxml-rs/
 │   ├── bin/              # CLI tools (requires 'cli' feature)
 │   │   └── walk_to_dfxml.rs
 │   ├── reader.rs         # Streaming XML parser
-│   └── writer.rs         # XML serializer
+│   ├── writer.rs         # XML serializer
+│   └── validation.rs     # XSD validation (requires 'validation' feature)
 ├── .github/
 │   └── workflows/
 │       └── build.yml     # CI workflow
@@ -364,6 +428,10 @@ dfxml-rs/
 - [`walkdir`](https://crates.io/crates/walkdir) - Directory traversal
 - [`rayon`](https://crates.io/crates/rayon) - Parallel processing
 - [`md-5`](https://crates.io/crates/md-5), [`sha1`](https://crates.io/crates/sha1), [`sha2`](https://crates.io/crates/sha2) - Hash computation
+
+### XSD Validation (optional, `validation` feature)
+
+- [`libxml`](https://crates.io/crates/libxml) - Rust bindings to libxml2 (requires libxml2 system library)
 
 ## Related Projects
 
