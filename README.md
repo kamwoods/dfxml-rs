@@ -344,8 +344,8 @@ dfxml-rs/
 ├── .github/
 │   └── workflows/
 │       └── build.yml     # CI workflow
-├── schema/
-│   └── dfxml.xsd         # DFXML schema for reference
+├── external/
+│   └── dfxml_schema/     # DFXML schema (git submodule)
 └── Cargo.toml
 ```
 
@@ -375,7 +375,7 @@ dfxml-rs/
 
 Original contributions to the library and tools in this repository are licenced under the GNU Lesser General Public License, v3.0.
 
-Some commits to this repository may contain a version of the DFXML Schema (in the form of the file ```dfxml.xsd```), which is in the public domain. The following text duplicates LICENSE.md from https://github.com/dfxml-working-group/dfxml_schema:
+This repository points to https://github.com/dfxml-working-group/dfxml_schema as a submodule. The LICENSE.md text from that repository is noted in the following paragraph.
 
 DFXML and its schema were developed by employees and contractors of the United States Government. Within the United States, copyright protection, under Section 105 of the United States Code, Title 17, is not available for any work of the United States Government and/or for any works created by United States Government employees. By that Section, and by agreement with the developing contractors, this work is in the public domain.
 
