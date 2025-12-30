@@ -18,6 +18,7 @@ This is an early WIP prototype. Exercise caution when using.
 - **Streaming Reader**: Memory-efficient parsing using `quick-xml` — process millions of file entries without loading everything into memory
 - **XML Writer**: Generate valid DFXML output with proper namespace handling
 - **Round-trip Support**: Parse DFXML, modify objects, and write back to XML
+- **CLI Tools**: Command-line utilities for working with DFXML (optional `cli` feature)
 - **Optional Serde Support**: Enable the `serde` feature for serialization/deserialization
 
 ## Installation
@@ -31,6 +32,25 @@ dfxml-rs = { path = "path/to/dfxml-rs" }
 # Optional: enable serde support
 # dfxml-rs = { path = "path/to/dfxml-rs", features = ["serde"] }
 ```
+
+## Building
+
+### Library Only
+
+```bash
+cargo build --release
+```
+
+### With CLI Tools
+
+To build the command-line tools, enable the `cli` feature:
+
+```bash
+cargo build --release --features cli
+```
+
+This builds the following tools:
+- `walk_to_dfxml` - Walk a directory tree and generate DFXML output
 
 ## Quick Start
 
@@ -120,6 +140,81 @@ fn main() -> dfxml_rs::Result<()> {
 
     Ok(())
 }
+```
+
+## CLI Tools
+
+The following command-line tools are available when building with `--features cli`.
+
+### walk_to_dfxml
+
+Walk a directory tree and generate DFXML output to stdout. This is a Rust implementation of the Python `walk_to_dfxml.py` tool from the [dfxml_python](https://github.com/dfxml-working-group/dfxml_python) project.
+
+**Usage:**
+
+```bash
+walk_to_dfxml [OPTIONS] [PATH]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `[PATH]` | Directory to walk (defaults to current directory) |
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-d, --debug` | Enable debug output |
+| `-i, --ignore <PROPERTY>` | Ignore a property on file objects (can be specified multiple times) |
+| `--ignore-hashes` | Do not calculate any hashes |
+| `-j, --jobs <N>` | Number of file-processing threads (default: 1) |
+| `--follow-links` | Follow symbolic links when walking directories |
+| `--compact` | Output compact XML (no indentation) |
+| `-h, --help` | Print help |
+| `-V, --version` | Print version |
+
+**Ignorable Properties:**
+
+Use `-i` to exclude specific properties from the output:
+
+- File identification: `filename`, `name_type`, `filesize`, `alloc`
+- Unix metadata: `inode`, `mode`, `nlink`, `uid`, `gid`
+- Timestamps: `mtime`, `atime`, `ctime`, `crtime`
+- Symlinks: `link_target`
+- Hashes: `md5`, `sha1`, `sha256`, `sha384`, `sha512`
+- Errors: `error`
+
+Property ignores can be restricted to specific file types using `property@type` syntax:
+- `d` = directory
+- `r` = regular file
+- `l` = symbolic link
+- `b` = block device
+- `c` = character device
+- `p` = FIFO/pipe
+- `s` = socket
+
+**Examples:**
+
+```bash
+# Walk current directory, output to file
+walk_to_dfxml > manifest.dfxml
+
+# Walk specific directory with 4 threads for parallel hash computation
+walk_to_dfxml -j 4 /path/to/directory > manifest.dfxml
+
+# Skip all hash computation for faster scanning
+walk_to_dfxml --ignore-hashes /path/to/directory > manifest.dfxml
+
+# Ignore inode numbers and modification times
+walk_to_dfxml -i inode -i mtime /path/to/directory > manifest.dfxml
+
+# Ignore modification times only for directories
+walk_to_dfxml -i mtime@d /path/to/directory > manifest.dfxml
+
+# Output compact XML
+walk_to_dfxml --compact /path/to/directory > manifest.dfxml
 ```
 
 ## Core Types
@@ -242,8 +337,13 @@ dfxml-rs/
 │   │   ├── fileobject.rs # FileObject
 │   │   ├── volume.rs     # VolumeObject, PartitionObject, DiskImageObject
 │   │   └── dfxml.rs      # DFXMLObject (root document)
+│   ├── bin/              # CLI tools (requires 'cli' feature)
+│   │   └── walk_to_dfxml.rs
 │   ├── reader.rs         # Streaming XML parser
 │   └── writer.rs         # XML serializer
+├── .github/
+│   └── workflows/
+│       └── build.yml     # CI workflow
 ├── schema/
 │   └── dfxml.xsd         # DFXML schema for reference
 └── Cargo.toml
@@ -251,10 +351,19 @@ dfxml-rs/
 
 ## Dependencies
 
+### Core Library
+
 - [`quick-xml`](https://crates.io/crates/quick-xml) - Fast XML parsing and writing
 - [`chrono`](https://crates.io/crates/chrono) - Date/time handling
 - [`thiserror`](https://crates.io/crates/thiserror) - Error type derivation
 - [`serde`](https://crates.io/crates/serde) (optional) - Serialization support
+
+### CLI Tools (optional, `cli` feature)
+
+- [`clap`](https://crates.io/crates/clap) - Command-line argument parsing
+- [`walkdir`](https://crates.io/crates/walkdir) - Directory traversal
+- [`rayon`](https://crates.io/crates/rayon) - Parallel processing
+- [`md-5`](https://crates.io/crates/md-5), [`sha1`](https://crates.io/crates/sha1), [`sha2`](https://crates.io/crates/sha2) - Hash computation
 
 ## Related Projects
 

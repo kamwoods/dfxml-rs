@@ -63,6 +63,23 @@ impl NameType {
         }
     }
 
+    /// Creates a NameType from a single character.
+    pub fn from_char(c: char) -> Option<Self> {
+        match c {
+            'r' | '-' => Some(NameType::Regular),
+            'd' => Some(NameType::Directory),
+            'l' => Some(NameType::SymbolicLink),
+            'b' => Some(NameType::BlockDevice),
+            'c' => Some(NameType::CharacterDevice),
+            'p' => Some(NameType::Fifo),
+            's' => Some(NameType::Socket),
+            'w' => Some(NameType::Shadow),
+            'v' => Some(NameType::Virtual),
+            '?' => Some(NameType::Unknown),
+            _ => None,
+        }
+    }
+
     /// Returns the single-character string representation.
     pub fn as_str(&self) -> &'static str {
         match self {
