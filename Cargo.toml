@@ -24,10 +24,14 @@ sha2 = { version = "0.10", optional = true }
 rayon = { version = "1.10", optional = true }
 digest = { version = "0.10", optional = true }
 
+# Validation dependencies (optional)
+libxml = { version = "0.3", optional = true }
+
 [features]
 default = []
 serde = ["dep:serde", "chrono/serde"]
 cli = ["dep:clap", "dep:walkdir", "dep:md-5", "dep:sha1", "dep:sha2", "dep:rayon", "dep:digest"]
+validation = ["dep:libxml"]
 
 [[bin]]
 name = "walk_to_dfxml"

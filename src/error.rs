@@ -57,6 +57,10 @@ pub enum Error {
     /// Invalid facet value
     #[error("Invalid facet value: {0}")]
     InvalidFacet(String),
+
+    /// XSD validation error (requires `validation` feature)
+    #[error("Validation error: {0}")]
+    Validation(String),
 }
 
 /// Result type alias for DFXML operations.
