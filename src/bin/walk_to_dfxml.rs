@@ -391,10 +391,10 @@ fn path_to_fileobject(
     }
 
     // Set filesize (for regular files)
-    if !ignore_config.should_ignore(Property::Filesize, name_type_opt) {
-        if name_type_char == 'r' || name_type_char == '-' {
-            fobj.filesize = Some(metadata.len());
-        }
+    if !ignore_config.should_ignore(Property::Filesize, name_type_opt)
+        && (name_type_char == 'r' || name_type_char == '-')
+    {
+        fobj.filesize = Some(metadata.len());
     }
 
     // Set allocation status (assume allocated for live filesystem)
@@ -463,11 +463,9 @@ fn path_to_fileobject(
     }
 
     // Set link target for symlinks
-    if !ignore_config.should_ignore(Property::LinkTarget, name_type_opt) {
-        if name_type_char == 'l' {
-            if let Ok(target) = fs::read_link(path) {
-                fobj.link_target = Some(target.to_string_lossy().to_string());
-            }
+    if !ignore_config.should_ignore(Property::LinkTarget, name_type_opt) && name_type_char == 'l' {
+        if let Ok(target) = fs::read_link(path) {
+            fobj.link_target = Some(target.to_string_lossy().to_string());
         }
     }
 
