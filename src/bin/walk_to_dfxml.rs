@@ -51,8 +51,10 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 #[command(name = "walk_to_dfxml")]
 #[command(version = VERSION)]
 #[command(about = "Walk a directory tree and generate DFXML output")]
-#[command(long_about = "Recursively walks a directory, collecting file metadata and \
-    optionally computing cryptographic hashes, then outputs the results as DFXML to stdout.")]
+#[command(
+    long_about = "Recursively walks a directory, collecting file metadata and \
+    optionally computing cryptographic hashes, then outputs the results as DFXML to stdout."
+)]
 struct Args {
     /// Directory to walk (defaults to current directory)
     #[arg(default_value = ".")]
@@ -160,10 +162,7 @@ impl IgnoreConfig {
     }
 
     fn add(&mut self, property: Property, name_type: Option<char>) {
-        self.ignores
-            .entry(property)
-            .or_default()
-            .insert(name_type);
+        self.ignores.entry(property).or_default().insert(name_type);
     }
 
     fn should_ignore(&self, property: Property, name_type: Option<char>) -> bool {
@@ -448,7 +447,9 @@ fn path_to_fileobject(
         use std::time::UNIX_EPOCH;
         let ctime_secs = metadata.ctime();
         if ctime_secs >= 0 {
-            if let Some(ctime) = UNIX_EPOCH.checked_add(std::time::Duration::from_secs(ctime_secs as u64)) {
+            if let Some(ctime) =
+                UNIX_EPOCH.checked_add(std::time::Duration::from_secs(ctime_secs as u64))
+            {
                 fobj.ctime = system_time_to_timestamp(ctime, TimestampName::Ctime);
             }
         }
@@ -507,7 +508,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Canonicalize base path
-    let base_path = args.path.canonicalize().unwrap_or_else(|_| args.path.clone());
+    let base_path = args
+        .path
+        .canonicalize()
+        .unwrap_or_else(|_| args.path.clone());
 
     // Collect all paths first
     let mut paths: Vec<PathBuf> = Vec::new();
@@ -548,10 +552,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .collect();
 
         // Collect results, maintaining order by sorting by filename
-        let mut file_objects: Vec<FileObject> = results
-            .into_iter()
-            .filter_map(|r| r.ok())
-            .collect();
+        let mut file_objects: Vec<FileObject> =
+            results.into_iter().filter_map(|r| r.ok()).collect();
 
         // Sort by filename to ensure deterministic output
         file_objects.sort_by(|a, b| a.filename.cmp(&b.filename));
