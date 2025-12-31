@@ -3,7 +3,7 @@
 //! This is the most commonly used DFXML object, representing a single file
 //! with its metadata, timestamps, hashes, and byte run locations.
 
-use crate::objects::common::{ByteRuns, Hashes, Timestamp, TimestampName};
+use crate::objects::common::{ByteRuns, Externals, Hashes, Timestamp, TimestampName};
 use std::collections::HashSet;
 
 /// Allocation status of a file.
@@ -269,6 +269,10 @@ pub struct FileObject {
     /// Reference to the original file object (for differencing)
     #[cfg_attr(feature = "serde", serde(skip))]
     pub original_fileobject: Option<Box<FileObject>>,
+
+    // === External Elements ===
+    /// Elements from non-DFXML namespaces (preserved for round-tripping)
+    pub externals: Externals,
 
     // === Parent References ===
     /// Parent object identifier

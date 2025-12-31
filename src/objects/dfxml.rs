@@ -63,6 +63,7 @@ impl Default for LibraryObject {
 /// - Namespaces
 /// - Child objects (disk images, volumes, files)
 /// - Build environment information
+/// - External elements from non-DFXML namespaces
 #[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DFXMLObject {
@@ -95,6 +96,10 @@ pub struct DFXMLObject {
     /// XML namespaces (prefix -> URI)
     #[cfg_attr(feature = "serde", serde(skip))]
     namespaces: HashMap<String, String>,
+
+    // === External Elements ===
+    /// Elements from non-DFXML namespaces (preserved for round-tripping)
+    pub externals: crate::objects::common::Externals,
 
     // === Child Objects ===
     /// Disk images directly attached to this document
@@ -183,6 +188,34 @@ impl DFXMLObject {
 
     // === Child Object Management ===
 
+    /// Appends any child object to the document.
+    ///
+    /// This is a unified method that accepts any valid child type via the `ChildObject` enum.
+    /// For convenience, you can use `.into()` to convert from specific types.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use dfxml_rs::objects::{DFXMLObject, VolumeObject, FileObject, ChildObject};
+    ///
+    /// let mut doc = DFXMLObject::new();
+    ///
+    /// // Direct ChildObject usage
+    /// doc.append(ChildObject::Volume(VolumeObject::new()));
+    ///
+    /// // Using From trait for ergonomic conversion
+    /// doc.append(FileObject::with_filename("test.txt").into());
+    /// ```
+    pub fn append(&mut self, child: ChildObject) {
+        match child {
+            ChildObject::DiskImage(di) => self.disk_images.push(di),
+            ChildObject::PartitionSystem(ps) => self.partition_systems.push(ps),
+            ChildObject::Partition(p) => self.partitions.push(p),
+            ChildObject::Volume(v) => self.volumes.push(v),
+            ChildObject::File(f) => self.files.push(*f),
+        }
+    }
+
     /// Appends a disk image to the document.
     pub fn append_disk_image(&mut self, disk_image: DiskImageObject) {
         self.disk_images.push(disk_image);
@@ -267,9 +300,67 @@ impl DFXMLObject {
 
     // === Iteration ===
 
+    /// Returns an iterator over direct child objects only.
+    ///
+    /// This yields only the immediate children of this document, not their descendants.
+    /// For recursive traversal, use `iter_descendants()`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use dfxml_rs::objects::{DFXMLObject, VolumeObject, FileObject, DFXMLChild};
+    ///
+    /// let mut doc = DFXMLObject::new();
+    /// doc.append_volume(VolumeObject::new());
+    /// doc.append_file(FileObject::with_filename("test.txt"));
+    ///
+    /// for child in doc.child_objects() {
+    ///     match child {
+    ///         DFXMLChild::Volume(v) => println!("Volume: {:?}", v.ftype_str),
+    ///         DFXMLChild::File(f) => println!("File: {:?}", f.filename),
+    ///         _ => {}
+    ///     }
+    /// }
+    /// ```
+    pub fn child_objects(&self) -> DFXMLChildIterator<'_> {
+        DFXMLChildIterator::new(self)
+    }
+
+    /// Returns an iterator that yields all descendant objects in depth-first order.
+    ///
+    /// This recursively yields all objects: disk images and their contents,
+    /// partition systems and their contents, partitions and their contents,
+    /// volumes and their contents, then files.
+    ///
+    /// This is equivalent to Python's `__iter__` method on DFXMLObject.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use dfxml_rs::objects::{DFXMLObject, VolumeObject, FileObject, DFXMLChild};
+    ///
+    /// let mut doc = DFXMLObject::new();
+    /// let mut vol = VolumeObject::new();
+    /// vol.append_file(FileObject::with_filename("inner.txt"));
+    /// doc.append_volume(vol);
+    /// doc.append_file(FileObject::with_filename("outer.txt"));
+    ///
+    /// // iter_descendants yields: Volume, then inner.txt (depth-first), then outer.txt
+    /// for child in doc.iter_descendants() {
+    ///     match child {
+    ///         DFXMLChild::Volume(_) => println!("Found a volume"),
+    ///         DFXMLChild::File(f) => println!("Found file: {:?}", f.filename),
+    ///         _ => {}
+    ///     }
+    /// }
+    /// ```
+    pub fn iter_descendants(&self) -> DFXMLIterator<'_> {
+        DFXMLIterator::new(self)
+    }
+
     /// Returns an iterator that yields all child objects in depth-first order.
     ///
-    /// This recursively yields disk images, volumes, and files.
+    /// This is an alias for `iter_descendants()` for compatibility.
     pub fn iter(&self) -> DFXMLIterator<'_> {
         DFXMLIterator::new(self)
     }
@@ -310,20 +401,84 @@ pub enum DFXMLChild<'a> {
     File(&'a FileObject),
 }
 
-/// Iterator over all child objects in a DFXMLObject.
-pub struct DFXMLIterator<'a> {
-    /// Stack of iterators for depth-first traversal
+/// An owned enum representing any child object that can be appended to a DFXML container.
+///
+/// This enum is used by the unified `append()` method on container objects like
+/// `DFXMLObject`, `VolumeObject`, `PartitionObject`, etc. It allows appending
+/// any valid child type without needing to call type-specific methods.
+///
+/// # Example
+///
+/// ```rust
+/// use dfxml_rs::objects::{DFXMLObject, VolumeObject, FileObject, ChildObject};
+///
+/// let mut doc = DFXMLObject::new();
+///
+/// // Using the unified append method with ChildObject
+/// doc.append(ChildObject::Volume(VolumeObject::new()));
+/// doc.append(ChildObject::File(Box::new(FileObject::with_filename("test.txt"))));
+///
+/// // Or using From implementations for ergonomic conversion
+/// doc.append(VolumeObject::with_ftype("ntfs").into());
+/// doc.append(FileObject::with_filename("another.txt").into());
+/// ```
+#[derive(Debug, Clone)]
+pub enum ChildObject {
+    /// A disk image object
+    DiskImage(DiskImageObject),
+    /// A partition system object
+    PartitionSystem(PartitionSystemObject),
+    /// A partition object
+    Partition(PartitionObject),
+    /// A volume object
+    Volume(VolumeObject),
+    /// A file object (boxed to reduce enum size)
+    File(Box<FileObject>),
+}
+
+impl From<DiskImageObject> for ChildObject {
+    fn from(obj: DiskImageObject) -> Self {
+        ChildObject::DiskImage(obj)
+    }
+}
+
+impl From<PartitionSystemObject> for ChildObject {
+    fn from(obj: PartitionSystemObject) -> Self {
+        ChildObject::PartitionSystem(obj)
+    }
+}
+
+impl From<PartitionObject> for ChildObject {
+    fn from(obj: PartitionObject) -> Self {
+        ChildObject::Partition(obj)
+    }
+}
+
+impl From<VolumeObject> for ChildObject {
+    fn from(obj: VolumeObject) -> Self {
+        ChildObject::Volume(obj)
+    }
+}
+
+impl From<FileObject> for ChildObject {
+    fn from(obj: FileObject) -> Self {
+        ChildObject::File(Box::new(obj))
+    }
+}
+
+/// Iterator over direct child objects in a DFXMLObject.
+///
+/// This iterator yields only the immediate children, not their descendants.
+/// For recursive traversal, use `iter_descendants()`.
+pub struct DFXMLChildIterator<'a> {
     disk_images: std::slice::Iter<'a, DiskImageObject>,
     partition_systems: std::slice::Iter<'a, PartitionSystemObject>,
     partitions: std::slice::Iter<'a, PartitionObject>,
     volumes: std::slice::Iter<'a, VolumeObject>,
     files: std::slice::Iter<'a, FileObject>,
-    /// Reserved for future depth-first traversal into volume contents
-    #[allow(dead_code)]
-    current_volume_files: Option<Box<dyn Iterator<Item = &'a FileObject> + 'a>>,
 }
 
-impl<'a> DFXMLIterator<'a> {
+impl<'a> DFXMLChildIterator<'a> {
     fn new(doc: &'a DFXMLObject) -> Self {
         Self {
             disk_images: doc.disk_images.iter(),
@@ -331,7 +486,140 @@ impl<'a> DFXMLIterator<'a> {
             partitions: doc.partitions.iter(),
             volumes: doc.volumes.iter(),
             files: doc.files.iter(),
-            current_volume_files: None,
+        }
+    }
+}
+
+impl<'a> Iterator for DFXMLChildIterator<'a> {
+    type Item = DFXMLChild<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(di) = self.disk_images.next() {
+            return Some(DFXMLChild::DiskImage(di));
+        }
+        if let Some(ps) = self.partition_systems.next() {
+            return Some(DFXMLChild::PartitionSystem(ps));
+        }
+        if let Some(p) = self.partitions.next() {
+            return Some(DFXMLChild::Partition(p));
+        }
+        if let Some(v) = self.volumes.next() {
+            return Some(DFXMLChild::Volume(v));
+        }
+        if let Some(f) = self.files.next() {
+            return Some(DFXMLChild::File(f));
+        }
+        None
+    }
+}
+
+/// Iterator over all descendant objects in a DFXML document (depth-first).
+///
+/// This iterator recursively yields all objects in depth-first order:
+/// disk images and their contents, partition systems and their contents,
+/// partitions and their contents, volumes and their contents, then files.
+pub struct DFXMLIterator<'a> {
+    /// Stack for depth-first traversal
+    stack: Vec<DFXMLChild<'a>>,
+}
+
+impl<'a> DFXMLIterator<'a> {
+    fn new(doc: &'a DFXMLObject) -> Self {
+        // Build initial stack in reverse order (so first items are popped first)
+        let mut stack = Vec::new();
+
+        // Add in reverse order: files, volumes, partitions, partition_systems, disk_images
+        for f in doc.files.iter().rev() {
+            stack.push(DFXMLChild::File(f));
+        }
+        for v in doc.volumes.iter().rev() {
+            stack.push(DFXMLChild::Volume(v));
+        }
+        for p in doc.partitions.iter().rev() {
+            stack.push(DFXMLChild::Partition(p));
+        }
+        for ps in doc.partition_systems.iter().rev() {
+            stack.push(DFXMLChild::PartitionSystem(ps));
+        }
+        for di in doc.disk_images.iter().rev() {
+            stack.push(DFXMLChild::DiskImage(di));
+        }
+
+        Self { stack }
+    }
+
+    /// Push children of a container onto the stack (in reverse order for correct traversal)
+    fn push_children(&mut self, child: &DFXMLChild<'a>) {
+        match child {
+            DFXMLChild::DiskImage(di) => {
+                // Push in reverse order: files, volumes, partitions, partition_systems
+                // Collect into Vec to allow reverse iteration
+                let files: Vec<_> = di.files().collect();
+                let volumes: Vec<_> = di.volumes().collect();
+                let partitions: Vec<_> = di.partitions().collect();
+                let partition_systems: Vec<_> = di.partition_systems().collect();
+
+                for f in files.into_iter().rev() {
+                    self.stack.push(DFXMLChild::File(f));
+                }
+                for v in volumes.into_iter().rev() {
+                    self.stack.push(DFXMLChild::Volume(v));
+                }
+                for p in partitions.into_iter().rev() {
+                    self.stack.push(DFXMLChild::Partition(p));
+                }
+                for ps in partition_systems.into_iter().rev() {
+                    self.stack.push(DFXMLChild::PartitionSystem(ps));
+                }
+            }
+            DFXMLChild::PartitionSystem(ps) => {
+                let files: Vec<_> = ps.files().collect();
+                let partitions: Vec<_> = ps.partitions().collect();
+
+                for f in files.into_iter().rev() {
+                    self.stack.push(DFXMLChild::File(f));
+                }
+                for p in partitions.into_iter().rev() {
+                    self.stack.push(DFXMLChild::Partition(p));
+                }
+            }
+            DFXMLChild::Partition(p) => {
+                let files: Vec<_> = p.files().collect();
+                let volumes: Vec<_> = p.volumes().collect();
+                let partitions: Vec<_> = p.partitions().collect();
+                let partition_systems: Vec<_> = p.partition_systems().collect();
+
+                for f in files.into_iter().rev() {
+                    self.stack.push(DFXMLChild::File(f));
+                }
+                for v in volumes.into_iter().rev() {
+                    self.stack.push(DFXMLChild::Volume(v));
+                }
+                for part in partitions.into_iter().rev() {
+                    self.stack.push(DFXMLChild::Partition(part));
+                }
+                for ps in partition_systems.into_iter().rev() {
+                    self.stack.push(DFXMLChild::PartitionSystem(ps));
+                }
+            }
+            DFXMLChild::Volume(v) => {
+                let files: Vec<_> = v.files().collect();
+                let volumes: Vec<_> = v.volumes().collect();
+                let disk_images: Vec<_> = v.disk_images().collect();
+
+                for f in files.into_iter().rev() {
+                    self.stack.push(DFXMLChild::File(f));
+                }
+                for vol in volumes.into_iter().rev() {
+                    self.stack.push(DFXMLChild::Volume(vol));
+                }
+                for di in disk_images.into_iter().rev() {
+                    self.stack.push(DFXMLChild::DiskImage(di));
+                }
+            }
+            DFXMLChild::File(_) => {
+                // Files have no children
+            }
         }
     }
 }
@@ -340,32 +628,13 @@ impl<'a> Iterator for DFXMLIterator<'a> {
     type Item = DFXMLChild<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // First yield disk images
-        if let Some(di) = self.disk_images.next() {
-            return Some(DFXMLChild::DiskImage(di));
+        if let Some(child) = self.stack.pop() {
+            // Push this child's children onto the stack for depth-first traversal
+            self.push_children(&child);
+            Some(child)
+        } else {
+            None
         }
-
-        // Then partition systems
-        if let Some(ps) = self.partition_systems.next() {
-            return Some(DFXMLChild::PartitionSystem(ps));
-        }
-
-        // Then partitions
-        if let Some(p) = self.partitions.next() {
-            return Some(DFXMLChild::Partition(p));
-        }
-
-        // Then volumes (and their files)
-        if let Some(v) = self.volumes.next() {
-            return Some(DFXMLChild::Volume(v));
-        }
-
-        // Then files
-        if let Some(f) = self.files.next() {
-            return Some(DFXMLChild::File(f));
-        }
-
-        None
     }
 }
 

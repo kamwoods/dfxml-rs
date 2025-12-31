@@ -15,6 +15,10 @@ This is an early WIP prototype. Exercise caution when using.
 ## Features
 
 - **Complete Object Model**: Full representation of DFXML elements including files, volumes, disk images, partitions, and metadata
+- **Full Container Nesting**: Containers support arbitrary nesting matching the Python library (e.g., disk images in volumes, partition systems in partitions)
+- **Unified Append Methods**: Generic `append()` methods with type-safe child enums for each container
+- **Recursive Iteration**: Depth-first traversal of all descendants with `iter_descendants()`, plus `child_objects()` for direct children
+- **External Element Preservation**: Non-DFXML namespace elements are preserved for round-trip XML processing
 - **Streaming Reader**: Memory-efficient parsing using `quick-xml` — process millions of file entries without loading everything into memory
 - **XML Writer**: Generate valid DFXML output with proper namespace handling
 - **Round-trip Support**: Parse DFXML, modify objects, and write back to XML
@@ -153,8 +157,13 @@ fn main() -> dfxml_rs::Result<()> {
         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855".to_string(),
     );
 
+    // Type-specific append
     volume.append_file(file);
     doc.append_volume(volume);
+
+    // Or use unified append with .into()
+    // volume.append(file.into());
+    // doc.append(volume.into());
 
     let xml = to_string(&doc)?;
     println!("{}", xml);
@@ -262,6 +271,204 @@ walk_to_dfxml --compact /path/to/directory > manifest.dfxml
 | `ByteRuns` | Collection of byte runs with optional facet (data/inode/name) |
 | `LibraryObject` | Library name and version for creator/build info |
 | `NameType` / `MetaType` | File system entry type enums |
+| `ExternalElement` | Non-DFXML namespace XML element (for round-tripping) |
+| `Externals` | Collection of external elements |
+
+### Container Nesting
+
+Each container type can hold specific child types, matching the Python DFXML library:
+
+| Container | Can Contain |
+|-----------|-------------|
+| `DFXMLObject` | `DiskImageObject`, `PartitionSystemObject`, `PartitionObject`, `VolumeObject`, `FileObject` |
+| `DiskImageObject` | `PartitionSystemObject`, `PartitionObject`, `VolumeObject`, `FileObject` |
+| `PartitionSystemObject` | `PartitionObject`, `FileObject` |
+| `PartitionObject` | `PartitionSystemObject`, `PartitionObject`, `VolumeObject`, `FileObject` |
+| `VolumeObject` | `DiskImageObject`, `VolumeObject`, `FileObject` |
+
+### Unified Append Methods
+
+All container types support a unified `append()` method using type-safe child enums:
+
+```rust
+use dfxml_rs::objects::{
+    DFXMLObject, VolumeObject, FileObject,
+    ChildObject,        // For DFXMLObject
+    VolumeChild,        // For VolumeObject
+    PartitionChild,     // For PartitionObject
+    PartitionSystemChild, // For PartitionSystemObject
+    DiskImageChild,     // For DiskImageObject
+};
+
+let mut doc = DFXMLObject::new();
+
+// Using the unified append with explicit enum (FileObject must be boxed)
+doc.append(ChildObject::Volume(VolumeObject::new()));
+doc.append(ChildObject::File(Box::new(FileObject::with_filename("test.txt"))));
+
+// Using the From trait for ergonomic conversion (boxing is automatic)
+doc.append(VolumeObject::with_ftype("ntfs").into());
+doc.append(FileObject::with_filename("another.txt").into());
+
+// Type-specific methods still work (no boxing needed)
+doc.append_volume(VolumeObject::new());
+doc.append_file(FileObject::new());
+```
+
+Each container has its own child enum with `From` implementations. Large variants are boxed to reduce enum size:
+
+| Container | Child Enum | Variants |
+|-----------|------------|----------|
+| `DFXMLObject` | `ChildObject` | `DiskImage`, `PartitionSystem`, `Partition`, `Volume`, `File(Box<...>)` |
+| `DiskImageObject` | `DiskImageChild` | `PartitionSystem`, `Partition`, `Volume`, `File(Box<...>)` |
+| `PartitionSystemObject` | `PartitionSystemChild` | `Partition(Box<...>)`, `File(Box<...>)` |
+| `PartitionObject` | `PartitionChild` | `PartitionSystem`, `Partition`, `Volume`, `File(Box<...>)` |
+| `VolumeObject` | `VolumeChild` | `DiskImage`, `Volume`, `File(Box<...>)` |
+
+### Iteration Methods
+
+#### Direct Children
+
+Use `child_objects()` to iterate over immediate children only:
+
+```rust
+use dfxml_rs::objects::{DFXMLObject, DFXMLChild, VolumeChildRef};
+
+// DFXMLObject direct children
+for child in doc.child_objects() {
+    match child {
+        DFXMLChild::DiskImage(di) => println!("Disk image: {:?}", di.image_filename),
+        DFXMLChild::Volume(v) => println!("Volume: {:?}", v.ftype_str),
+        DFXMLChild::File(f) => println!("File: {:?}", f.filename),
+        _ => {}
+    }
+}
+
+// VolumeObject direct children
+for child in volume.child_objects() {
+    match child {
+        VolumeChildRef::DiskImage(di) => println!("Nested disk image"),
+        VolumeChildRef::Volume(v) => println!("Nested volume"),
+        VolumeChildRef::File(f) => println!("File: {:?}", f.filename),
+    }
+}
+```
+
+#### Recursive Descendants (Depth-First)
+
+Use `iter_descendants()` on `DFXMLObject` for depth-first traversal of all descendants:
+
+```rust
+use dfxml_rs::objects::{DFXMLObject, DFXMLChild};
+
+// Iterate all descendants in depth-first order
+for child in doc.iter_descendants() {
+    match child {
+        DFXMLChild::DiskImage(di) => println!("Disk image: {:?}", di.image_filename),
+        DFXMLChild::PartitionSystem(ps) => println!("Partition system: {:?}", ps.pstype_str),
+        DFXMLChild::Partition(p) => println!("Partition: {:?}", p.partition_index),
+        DFXMLChild::Volume(v) => println!("Volume: {:?}", v.ftype_str),
+        DFXMLChild::File(f) => println!("File: {:?}", f.filename),
+    }
+}
+
+// Shorthand alias
+for child in doc.iter() {
+    // Same as iter_descendants()
+}
+```
+
+#### Recursive File Iteration
+
+Use `iter_all_files()` to recursively iterate only files:
+
+```rust
+// All files anywhere in the document hierarchy
+for file in doc.iter_files() {
+    println!("{}: {} bytes", 
+        file.filename.as_deref().unwrap_or("<unnamed>"),
+        file.filesize.unwrap_or(0));
+}
+
+// All files in a volume (including nested volumes and disk images)
+for file in volume.iter_all_files() {
+    println!("{}", file.filename.as_deref().unwrap_or("<unnamed>"));
+}
+
+// All files in a disk image
+for file in disk_image.iter_all_files() {
+    println!("{}", file.filename.as_deref().unwrap_or("<unnamed>"));
+}
+```
+
+### Child Reference Enums (for Iteration)
+
+When iterating, reference-based enums are used:
+
+| Container | Reference Enum | Description |
+|-----------|---------------|-------------|
+| `DFXMLObject` | `DFXMLChild<'a>` | References to any DFXML child type |
+| `DiskImageObject` | `DiskImageChildRef<'a>` | References to disk image children |
+| `PartitionSystemObject` | `PartitionSystemChildRef<'a>` | References to partition system children |
+| `PartitionObject` | `PartitionChildRef<'a>` | References to partition children |
+| `VolumeObject` | `VolumeChildRef<'a>` | References to volume children |
+
+### External Elements
+
+All container types and `FileObject` have an `externals` field for preserving non-DFXML namespace elements during round-trip processing:
+
+```rust
+use dfxml_rs::objects::{DFXMLObject, ExternalElement, Externals};
+
+let mut doc = DFXMLObject::new();
+
+// Create an external element from a custom namespace
+let mut custom_elem = ExternalElement::with_namespace(
+    "http://example.org/custom",
+    "custom_metadata"
+);
+custom_elem.set_text("Some custom value");
+custom_elem.add_attribute("version", "1.0");
+
+// Add a child element
+let mut child = ExternalElement::new("nested_info");
+child.set_text("Nested content");
+custom_elem.add_child(child);
+
+// Add to the document
+doc.externals.push(custom_elem);
+
+// Check if there are external elements
+if !doc.externals.is_empty() {
+    println!("Document has {} external elements", doc.externals.len());
+    for ext in &doc.externals {
+        println!("  {} (ns: {:?})", ext.tag_name, ext.namespace);
+    }
+}
+```
+
+The `ExternalElement` type provides:
+
+| Method | Description |
+|--------|-------------|
+| `new(tag_name)` | Create with just a tag name |
+| `with_namespace(ns, tag_name)` | Create with namespace URI and tag name |
+| `set_text(text)` | Set the text content |
+| `add_attribute(name, value)` | Add an attribute |
+| `add_child(element)` | Add a child element |
+| `qualified_name()` | Get `{namespace}tag_name` format |
+
+The `Externals` collection provides:
+
+| Method | Description |
+|--------|-------------|
+| `new()` | Create empty collection |
+| `is_empty()` | Check if empty |
+| `len()` | Get element count |
+| `push(element)` | Add element (panics if DFXML namespace) |
+| `try_push(element)` | Add element (returns `Result`) |
+| `iter()` | Iterate over elements |
+| `clear()` | Remove all elements |
 
 ## Reader Module
 
@@ -395,11 +602,12 @@ dfxml-rs/
 │   ├── lib.rs            # Crate entry point and re-exports
 │   ├── error.rs          # Error types
 │   ├── objects/          # Core data structures
-│   │   ├── mod.rs
-│   │   ├── common.rs     # Hashes, Timestamps, ByteRuns, etc.
-│   │   ├── fileobject.rs # FileObject
-│   │   ├── volume.rs     # VolumeObject, PartitionObject, DiskImageObject
-│   │   └── dfxml.rs      # DFXMLObject (root document)
+│   │   ├── mod.rs        # Module exports
+│   │   ├── common.rs     # Hashes, Timestamps, ByteRuns, Externals, etc.
+│   │   ├── fileobject.rs # FileObject with metadata and externals
+│   │   ├── volume.rs     # VolumeObject, PartitionObject, DiskImageObject,
+│   │   │                 # PartitionSystemObject, and child enums
+│   │   └── dfxml.rs      # DFXMLObject, ChildObject, DFXMLIterator
 │   ├── bin/              # CLI tools (requires 'cli' feature)
 │   │   └── walk_to_dfxml.rs
 │   ├── reader.rs         # Streaming XML parser
