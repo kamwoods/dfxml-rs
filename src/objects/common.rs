@@ -780,6 +780,169 @@ impl std::ops::Index<usize> for ByteRuns {
     }
 }
 
+// ============================================================================
+// External Elements (for preserving non-DFXML namespace elements)
+// ============================================================================
+
+/// Represents an XML element from a non-DFXML namespace.
+///
+/// This is used to preserve unknown/extension elements when reading DFXML,
+/// allowing them to be round-tripped back to XML output.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct ExternalElement {
+    /// The XML namespace URI (e.g., `"http://example.org/custom"`)
+    pub namespace: Option<String>,
+    /// The local tag name (without namespace prefix)
+    pub tag_name: String,
+    /// Attributes as (name, value) pairs
+    pub attributes: Vec<(String, String)>,
+    /// Text content of the element
+    pub text: Option<String>,
+    /// Child elements
+    pub children: Vec<ExternalElement>,
+}
+
+impl ExternalElement {
+    /// Creates a new ExternalElement with the given tag name.
+    pub fn new(tag_name: impl Into<String>) -> Self {
+        Self {
+            namespace: None,
+            tag_name: tag_name.into(),
+            attributes: Vec::new(),
+            text: None,
+            children: Vec::new(),
+        }
+    }
+
+    /// Creates a new ExternalElement with namespace and tag name.
+    pub fn with_namespace(namespace: impl Into<String>, tag_name: impl Into<String>) -> Self {
+        Self {
+            namespace: Some(namespace.into()),
+            tag_name: tag_name.into(),
+            attributes: Vec::new(),
+            text: None,
+            children: Vec::new(),
+        }
+    }
+
+    /// Sets the text content.
+    pub fn set_text(&mut self, text: impl Into<String>) {
+        self.text = Some(text.into());
+    }
+
+    /// Adds an attribute.
+    pub fn add_attribute(&mut self, name: impl Into<String>, value: impl Into<String>) {
+        self.attributes.push((name.into(), value.into()));
+    }
+
+    /// Adds a child element.
+    pub fn add_child(&mut self, child: ExternalElement) {
+        self.children.push(child);
+    }
+
+    /// Returns the qualified tag name (with namespace prefix if known).
+    pub fn qualified_name(&self) -> String {
+        if let Some(ref ns) = self.namespace {
+            format!("{{{}}}{}", ns, self.tag_name)
+        } else {
+            self.tag_name.clone()
+        }
+    }
+}
+
+/// A list of external (non-DFXML namespace) XML elements.
+///
+/// This type is used to store unknown elements encountered during parsing,
+/// allowing them to be preserved and written back to XML.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Externals {
+    elements: Vec<ExternalElement>,
+}
+
+impl Externals {
+    /// Creates a new empty Externals list.
+    pub fn new() -> Self {
+        Self {
+            elements: Vec::new(),
+        }
+    }
+
+    /// Returns true if there are no external elements.
+    pub fn is_empty(&self) -> bool {
+        self.elements.is_empty()
+    }
+
+    /// Returns the number of external elements.
+    pub fn len(&self) -> usize {
+        self.elements.len()
+    }
+
+    /// Adds an external element.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the element's namespace is the DFXML namespace.
+    pub fn push(&mut self, element: ExternalElement) {
+        if let Some(ref ns) = element.namespace {
+            if ns == XMLNS_DFXML {
+                panic!("External elements must not be in the DFXML namespace");
+            }
+        }
+        self.elements.push(element);
+    }
+
+    /// Adds an external element, returning an error if it's in the DFXML namespace.
+    pub fn try_push(&mut self, element: ExternalElement) -> Result<()> {
+        if let Some(ref ns) = element.namespace {
+            if ns == XMLNS_DFXML {
+                return Err(Error::InvalidFacet(
+                    "External elements must not be in the DFXML namespace".to_string(),
+                ));
+            }
+        }
+        self.elements.push(element);
+        Ok(())
+    }
+
+    /// Returns an iterator over the external elements.
+    pub fn iter(&self) -> impl Iterator<Item = &ExternalElement> {
+        self.elements.iter()
+    }
+
+    /// Clears all external elements.
+    pub fn clear(&mut self) {
+        self.elements.clear();
+    }
+}
+
+impl IntoIterator for Externals {
+    type Item = ExternalElement;
+    type IntoIter = std::vec::IntoIter<ExternalElement>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.elements.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a Externals {
+    type Item = &'a ExternalElement;
+    type IntoIter = std::slice::Iter<'a, ExternalElement>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.elements.iter()
+    }
+}
+
+impl std::ops::Index<usize> for Externals {
+    type Output = ExternalElement;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.elements[index]
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
