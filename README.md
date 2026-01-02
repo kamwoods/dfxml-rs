@@ -56,6 +56,7 @@ cargo build --release --features cli
 
 This builds the following tools:
 - `walk_to_dfxml` - Walk a directory tree and generate DFXML output
+- `cat_fileobjects` - Extract fileobjects from a DFXML file
 
 ### With XSD Validation
 
@@ -246,6 +247,61 @@ walk_to_dfxml -i mtime@d /path/to/directory > manifest.dfxml
 # Output compact XML
 walk_to_dfxml --compact /path/to/directory > manifest.dfxml
 ```
+
+### cat_fileobjects
+
+Extract all fileobjects from a DFXML file and output a new DFXML document containing only those fileobjects. This is a Rust implementation of the Python `cat_fileobjects.py` tool from the [dfxml_python](https://github.com/dfxml-working-group/dfxml_python) project.
+
+**Usage:**
+
+```bash
+cat_fileobjects [OPTIONS] <FILENAME>
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `<FILENAME>` | Input DFXML file to process |
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--cache` | Cache all fileobjects in memory before printing |
+| `--debug` | Enable debug output to stderr |
+| `--compact` | Output compact XML (no indentation) |
+| `-h, --help` | Print help |
+| `-V, --version` | Print version |
+
+**Examples:**
+
+```bash
+# Extract fileobjects from a DFXML file
+cat_fileobjects input.dfxml > output.dfxml
+
+# With debug output to see processing
+cat_fileobjects --debug input.dfxml > output.dfxml
+
+# Cache mode (read all into memory before writing)
+cat_fileobjects --cache input.dfxml > output.dfxml
+
+# Compact XML output
+cat_fileobjects --compact input.dfxml > output.dfxml
+```
+
+**Output Format:**
+
+The tool generates a complete DFXML document with:
+- XML declaration and proper namespaces (DFXML and delta)
+- Metadata section with creator information (program name, version, command line)
+- Source section referencing the input file
+- All fileobject elements extracted from the input, regardless of their original container (volume, partition, etc.)
+
+This is useful for:
+- Flattening nested DFXML structures
+- Extracting file metadata from forensic analysis results
+- Creating file-only manifests from complex disk image analysis output
 
 ## Core Types
 
@@ -609,7 +665,8 @@ dfxml-rs/
 │   │   │                 # PartitionSystemObject, and child enums
 │   │   └── dfxml.rs      # DFXMLObject, ChildObject, DFXMLIterator
 │   ├── bin/              # CLI tools (requires 'cli' feature)
-│   │   └── walk_to_dfxml.rs
+│   │   ├── walk_to_dfxml.rs
+│   │   └── cat_fileobjects.rs
 │   ├── reader.rs         # Streaming XML parser
 │   ├── writer.rs         # XML serializer
 │   └── validation.rs     # XSD validation (requires 'validation' feature)
