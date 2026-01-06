@@ -47,7 +47,7 @@ use clap::Parser;
 
 use dfxml_rs::objects::{DFXMLObject, FileObject, LibraryObject, VolumeObject};
 use dfxml_rs::reader::parse;
-use dfxml_rs::writer::{DFXMLWriter, WriterConfig, to_string};
+use dfxml_rs::writer::{to_string, DFXMLWriter, WriterConfig};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -179,15 +179,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     output_doc.command_line = Some(std::env::args().collect::<Vec<_>>().join(" "));
 
     // Add Dublin Core metadata
-    output_doc
-        .dc
-        .insert("type".to_string(), "File system walk concatenation".to_string());
+    output_doc.dc.insert(
+        "type".to_string(),
+        "File system walk concatenation".to_string(),
+    );
 
     // Add creator libraries
-    output_doc.add_creator_library(LibraryObject::new(
-        "Rust",
-        env!("CARGO_PKG_RUST_VERSION"),
-    ));
+    output_doc.add_creator_library(LibraryObject::new("Rust", env!("CARGO_PKG_RUST_VERSION")));
     output_doc.add_creator_library(LibraryObject::new("dfxml-rs", dfxml_rs::VERSION));
 
     // Add source image if provided
