@@ -57,6 +57,7 @@ cargo build --release --features cli
 This builds the following tools:
 - `walk_to_dfxml` - Walk a directory tree and generate DFXML output
 - `cat_fileobjects` - Extract fileobjects from a DFXML file
+- `cat_partitions` - Concatenate DFXML documents with partition offset handling
 
 ### With XSD Validation
 
@@ -302,6 +303,64 @@ This is useful for:
 - Flattening nested DFXML structures
 - Extracting file metadata from forensic analysis results
 - Creating file-only manifests from complex disk image analysis output
+
+### cat_partitions
+
+Concatenate multiple DFXML documents with partition offset handling. This is a Rust implementation of the Python `cat_partitions.py` tool from the [dfxml_python](https://github.com/dfxml-working-group/dfxml_python) project.
+
+Each input DFXML file is prefixed with its partition's byte offset from the start of the disk image. The tool combines all volumes and updates partition numbers and byte run `img_offset` attributes accordingly.
+
+**Usage:**
+
+```bash
+cat_partitions [OPTIONS] <OFFSET:FILE>...
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `<OFFSET:FILE>...` | List of DFXML files with partition offsets (e.g., `32256:part1.dfxml`) |
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `-d, --debug` | Enable debug output to stderr |
+| `--image-path <PATH>` | Path to the source image file to record in the output |
+| `--compact` | Output compact XML (no indentation) |
+| `-h, --help` | Print help |
+| `-V, --version` | Print version |
+
+**Examples:**
+
+```bash
+# Concatenate two partition DFXML files
+cat_partitions 32256:partition1.dfxml 1073741824:partition2.dfxml > combined.dfxml
+
+# Include the source disk image path in output
+cat_partitions --image-path disk.raw 32256:part1.dfxml 512:part2.dfxml > combined.dfxml
+
+# With debug output
+cat_partitions --debug 32256:part1.dfxml > combined.dfxml
+```
+
+**Input Format:**
+
+Each input argument must be in the format `OFFSET:PATH` where:
+- `OFFSET` is the partition's byte offset from the start of the disk image (in bytes)
+- `PATH` is the path to the DFXML file for that partition
+
+The tool assumes each input DFXML document has at most one volume.
+
+**Output Processing:**
+
+The tool performs the following transformations:
+- Sets `partition_offset` on each volume based on the provided offset
+- Updates `partition` attribute on all file objects with a sequential partition number
+- Recalculates `img_offset` in byte runs as `fs_offset + partition_offset`
+- Accumulates namespaces from all input documents
+- Sorts partitions by offset before processing
 
 ## Core Types
 
@@ -666,7 +725,8 @@ dfxml-rs/
 │   │   └── dfxml.rs      # DFXMLObject, ChildObject, DFXMLIterator
 │   ├── bin/              # CLI tools (requires 'cli' feature)
 │   │   ├── walk_to_dfxml.rs
-│   │   └── cat_fileobjects.rs
+│   │   ├── cat_fileobjects.rs
+│   │   └── cat_partitions.rs
 │   ├── reader.rs         # Streaming XML parser
 │   ├── writer.rs         # XML serializer
 │   └── validation.rs     # XSD validation (requires 'validation' feature)
