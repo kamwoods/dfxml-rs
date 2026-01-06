@@ -43,5 +43,10 @@ name = "cat_fileobjects"
 path = "src/bin/cat_fileobjects.rs"
 required-features = ["cli"]
 
+[[bin]]
+name = "cat_partitions"
+path = "src/bin/cat_partitions.rs"
+required-features = ["cli"]
+
 [dev-dependencies]
 tempfile = "3.15"
