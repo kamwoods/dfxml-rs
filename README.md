@@ -362,6 +362,36 @@ The tool performs the following transformations:
 - Accumulates namespaces from all input documents
 - Sorts partitions by offset before processing
 
+## Examples
+
+The `demos/` directory contains example programs demonstrating library usage. These are ports of examples from the Python dfxml_python project.
+
+### demo_mac_timeline
+
+Produces a MAC-times (Modified, Accessed, Changed, Created) timeline from a DFXML file. This demonstrates using the streaming reader to extract timestamp information.
+
+**Run the example:**
+
+```bash
+cargo run --example demo_mac_timeline <filename.xml>
+```
+
+**Output format:**
+
+The output is tab-separated with three columns:
+- Timestamp (RFC 3339 / ISO 8601 format)
+- Filename
+- Event type (`modified`, `accessed`, `changed`, or `created`)
+
+**Example output:**
+
+```
+2024-01-15T10:30:00+00:00	/home/user/document.txt	modified
+2024-01-15T10:30:00+00:00	/home/user/document.txt	changed
+2024-01-15T14:22:00+00:00	/home/user/document.txt	accessed
+2024-01-20T09:00:00+00:00	/home/user/notes.md	created
+```
+
 ## Core Types
 
 ### Document Structure
@@ -730,6 +760,8 @@ dfxml-rs/
 │   ├── reader.rs         # Streaming XML parser
 │   ├── writer.rs         # XML serializer
 │   └── validation.rs     # XSD validation (requires 'validation' feature)
+├── demos/                # Example programs
+│   └── demo_mac_timeline.rs
 ├── .github/
 │   └── workflows/
 │       └── build.yml     # CI workflow

@@ -48,5 +48,9 @@ name = "cat_partitions"
 path = "src/bin/cat_partitions.rs"
 required-features = ["cli"]
 
+[[example]]
+name = "demo_mac_timeline"
+path = "demos/demo_mac_timeline.rs"
+
 [dev-dependencies]
 tempfile = "3.15"
