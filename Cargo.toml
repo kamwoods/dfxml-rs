@@ -48,6 +48,11 @@ name = "cat_partitions"
 path = "src/bin/cat_partitions.rs"
 required-features = ["cli"]
 
+[[bin]]
+name = "dedup"
+path = "src/bin/dedup.rs"
+required-features = ["cli"]
+
 [[example]]
 name = "demo_mac_timeline"
 path = "demos/demo_mac_timeline.rs"

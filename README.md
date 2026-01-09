@@ -58,6 +58,7 @@ This builds the following tools:
 - `walk_to_dfxml` - Walk a directory tree and generate DFXML output
 - `cat_fileobjects` - Extract fileobjects from a DFXML file
 - `cat_partitions` - Concatenate DFXML documents with partition offset handling
+- `dedup` - Detect and report duplicate files based on MD5 hashes
 
 ### With XSD Validation
 
@@ -361,6 +362,73 @@ The tool performs the following transformations:
 - Recalculates `img_offset` in byte runs as `fs_offset + partition_offset`
 - Accumulates namespaces from all input documents
 - Sorts partitions by offset before processing
+
+### dedup
+
+Detect and report duplicate files based on MD5 hashes in a DFXML file. This is a Rust implementation of the Python `dedup.py` tool from the [dfxml_python](https://github.com/dfxml-working-group/dfxml_python) project.
+
+The tool reads a DFXML file, groups files by their MD5 hash, and reports statistics. It can optionally list distinct (unique) files or files that have duplicates.
+
+**Usage:**
+
+```bash
+dedup [OPTIONS] <DFXML_FILE>
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `<DFXML_FILE>` | Input DFXML file to process |
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--verbose` | Enable verbose output |
+| `--prefix <PREFIX>` | Only output files with the given path prefix |
+| `--distinct` | Report the distinct (unique) files |
+| `--dups` | Report files that are duplicates, with duplicate count |
+| `-h, --help` | Print help |
+| `-V, --version` | Print version |
+
+**Examples:**
+
+```bash
+# Show summary statistics only
+dedup input.dfxml
+
+# List all distinct (unique) files
+dedup --distinct input.dfxml
+
+# List all duplicate files with their duplicate count
+dedup --dups input.dfxml
+
+# Filter to files under a specific directory
+dedup --dups --prefix /home/user input.dfxml
+
+# Combine options
+dedup --distinct --dups --prefix /data input.dfxml
+```
+
+**Output:**
+
+The tool always prints a summary line:
+```
+Total files: 1,234  total MD5s processed: 1,200  Unique MD5s: 950
+```
+
+With `--distinct`, each unique file is printed:
+```
+distinct: /path/to/unique/file.txt
+```
+
+With `--dups`, each duplicate file is printed with the count of files sharing its hash:
+```
+dups: /path/to/duplicate1.txt 3
+dups: /path/to/duplicate2.txt 3
+dups: /path/to/duplicate3.txt 3
+```
 
 ## Examples
 
@@ -756,7 +824,8 @@ dfxml-rs/
 │   ├── bin/              # CLI tools (requires 'cli' feature)
 │   │   ├── walk_to_dfxml.rs
 │   │   ├── cat_fileobjects.rs
-│   │   └── cat_partitions.rs
+│   │   ├── cat_partitions.rs
+│   │   └── dedup.rs
 │   ├── reader.rs         # Streaming XML parser
 │   ├── writer.rs         # XML serializer
 │   └── validation.rs     # XSD validation (requires 'validation' feature)
