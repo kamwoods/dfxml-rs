@@ -57,5 +57,9 @@ required-features = ["cli"]
 name = "demo_mac_timeline"
 path = "demos/demo_mac_timeline.rs"
 
+[[example]]
+name = "demo_sizes"
+path = "demos/demo_sizes.rs"
+
 [dev-dependencies]
 tempfile = "3.15"
