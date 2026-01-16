@@ -460,6 +460,35 @@ The output is tab-separated with three columns:
 2024-01-20T09:00:00+00:00	/home/user/notes.md	created
 ```
 
+### demo_sizes
+
+Calculates file size statistics grouped by file extension. This demonstrates using the streaming reader to aggregate data across all files.
+
+**Run the example:**
+
+```bash
+cargo run --example demo_sizes <filename.xml>
+```
+
+**Output format:**
+
+The output is a formatted table with columns:
+- Ext: File extension (lowercase, or "(none)" for files without extension)
+- Count: Number of files with that extension
+- Total: Total size in bytes
+- Average: Average file size in bytes
+- StdDev: Standard deviation of file sizes
+
+**Example output:**
+
+```
+     Ext       Count        Total      Average       StdDev
+  (none)          15         4096        273.1        512.3
+     doc          23      1048576      45590.3      12453.2
+     pdf         142     52428800     369216.9     156842.1
+     txt         891       102400        114.9         87.6
+```
+
 ## Core Types
 
 ### Document Structure
@@ -830,7 +859,8 @@ dfxml-rs/
 │   ├── writer.rs         # XML serializer
 │   └── validation.rs     # XSD validation (requires 'validation' feature)
 ├── demos/                # Example programs
-│   └── demo_mac_timeline.rs
+│   ├── demo_mac_timeline.rs
+│   └── demo_sizes.rs
 ├── .github/
 │   └── workflows/
 │       └── build.yml     # CI workflow
