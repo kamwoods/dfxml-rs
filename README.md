@@ -10,7 +10,7 @@ A Rust library for reading, writing, and manipulating Digital Forensics XML (DFX
 
 This library provides a complete object model mirroring the [Python DFXML library](https://github.com/dfxml-working-group/dfxml_python), with streaming XML parsing for memory-efficient processing of large forensic datasets.
 
-This is an early WIP prototype. Exercise caution when using.
+This library is WIP. Features and interfaces may be subject to change.
 
 ## Features
 
